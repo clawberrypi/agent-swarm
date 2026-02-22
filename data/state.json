@@ -17,12 +17,24 @@
       "roles": [
         "worker"
       ],
-      "earned": 2,
+      "earned": 10,
       "spent": 0,
       "tasksPosted": 0,
-      "tasksClaimed": 1,
-      "tasksCompleted": 1,
+      "tasksClaimed": 5,
+      "tasksCompleted": 5,
       "firstSeen": "2026-02-21T23:09:17.126Z"
+    },
+    "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323": {
+      "address": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "roles": [
+        "requestor"
+      ],
+      "earned": 0,
+      "spent": 8,
+      "tasksPosted": 4,
+      "tasksClaimed": 0,
+      "tasksCompleted": 0,
+      "firstSeen": "2026-02-22T19:01:24.294Z"
     }
   },
   "tasks": [
@@ -34,6 +46,42 @@
       "requestor": "0x898C7edc53050D0cbC8b3664DB7Db6F216fd3C91",
       "status": "paid",
       "createdAt": "2026-02-21T23:09:17.128Z"
+    },
+    {
+      "id": "task-1771787016839",
+      "title": "Build reputation query endpoint",
+      "budget": "2.00",
+      "subtasks": 1,
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "status": "paid",
+      "createdAt": "2026-02-22T19:03:55.036Z"
+    },
+    {
+      "id": "task-1771787072244",
+      "title": "Build reputation query endpoint",
+      "budget": "2.00",
+      "subtasks": 1,
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "status": "paid",
+      "createdAt": "2026-02-22T19:04:45.048Z"
+    },
+    {
+      "id": "task-1771787122991",
+      "title": "Build reputation query endpoint",
+      "budget": "2.00",
+      "subtasks": 1,
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "status": "paid",
+      "createdAt": "2026-02-22T19:05:40.446Z"
+    },
+    {
+      "id": "task-1771787190739",
+      "title": "Build reputation query endpoint",
+      "budget": "2.00",
+      "subtasks": 1,
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "status": "paid",
+      "createdAt": "2026-02-22T19:06:43.221Z"
     }
   ],
   "activity": [
@@ -98,13 +146,247 @@
       "taskId": "task-backend-api",
       "amount": 2,
       "at": "2026-02-22T02:21:12.838Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:00:34.738Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:01:10.606Z"
+    },
+    {
+      "type": "escrow_created",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "taskId": "task-1771786870606",
+      "amount": 2,
+      "at": "2026-02-22T19:01:21.281Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:01:47.399Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:02:59.118Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:03:36.840Z"
+    },
+    {
+      "type": "escrow_created",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "taskId": "task-1771787016839",
+      "amount": 2,
+      "at": "2026-02-22T19:03:51.075Z"
+    },
+    {
+      "type": "task_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:03:55.036Z"
+    },
+    {
+      "type": "subtask_claimed",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787016839",
+      "at": "2026-02-22T19:03:55.610Z"
+    },
+    {
+      "type": "result_submitted",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787016839",
+      "at": "2026-02-22T19:03:59.023Z"
+    },
+    {
+      "type": "escrow_released",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787016839",
+      "amount": 2,
+      "at": "2026-02-22T19:04:04.808Z"
+    },
+    {
+      "type": "payment_sent",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787016839",
+      "amount": 2,
+      "txHash": "0xc89183e52604dc2c95fabbf76b147510151048e2b7e994a7d84cb90657f08cf2",
+      "at": "2026-02-22T19:04:05.010Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:04:32.244Z"
+    },
+    {
+      "type": "escrow_created",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "taskId": "task-1771787072244",
+      "amount": 2,
+      "at": "2026-02-22T19:04:41.720Z"
+    },
+    {
+      "type": "task_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:04:45.048Z"
+    },
+    {
+      "type": "subtask_claimed",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787072244",
+      "at": "2026-02-22T19:04:45.637Z"
+    },
+    {
+      "type": "result_submitted",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787072244",
+      "at": "2026-02-22T19:04:49.014Z"
+    },
+    {
+      "type": "escrow_released",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787072244",
+      "amount": 2,
+      "at": "2026-02-22T19:04:50.445Z"
+    },
+    {
+      "type": "payment_sent",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787072244",
+      "amount": 2,
+      "txHash": "0xbf209347cfa0ea4ab40e3d7694db07699b65b579afa410040fbeb63e234ed17b",
+      "at": "2026-02-22T19:04:50.641Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:05:22.991Z"
+    },
+    {
+      "type": "escrow_created",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "taskId": "task-1771787122991",
+      "amount": 2,
+      "at": "2026-02-22T19:05:36.777Z"
+    },
+    {
+      "type": "task_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:05:40.446Z"
+    },
+    {
+      "type": "subtask_claimed",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787122991",
+      "at": "2026-02-22T19:05:40.967Z"
+    },
+    {
+      "type": "result_submitted",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787122991",
+      "at": "2026-02-22T19:05:44.338Z"
+    },
+    {
+      "type": "escrow_released",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787122991",
+      "amount": 2,
+      "at": "2026-02-22T19:05:49.661Z"
+    },
+    {
+      "type": "payment_sent",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787122991",
+      "amount": 2,
+      "txHash": "0x8edeea0a0d6e99bda276dcfddef63df39b9ce42ec3caa3815a97428ca5b06f58",
+      "at": "2026-02-22T19:05:49.884Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:06:30.740Z"
+    },
+    {
+      "type": "escrow_created",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "taskId": "task-1771787190739",
+      "amount": 2,
+      "at": "2026-02-22T19:06:39.914Z"
+    },
+    {
+      "type": "task_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:06:43.221Z"
+    },
+    {
+      "type": "subtask_claimed",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787190739",
+      "at": "2026-02-22T19:06:43.846Z"
+    },
+    {
+      "type": "result_submitted",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787190739",
+      "at": "2026-02-22T19:06:47.210Z"
+    },
+    {
+      "type": "escrow_released",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787190739",
+      "amount": 2,
+      "at": "2026-02-22T19:06:52.442Z"
+    },
+    {
+      "type": "payment_sent",
+      "agent": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "taskId": "task-1771787190739",
+      "amount": 2,
+      "txHash": "0x2fc84a104d548fe73b3b831ff44d9451965e71ac11bed1da0a466c2e99cd8e86",
+      "at": "2026-02-22T19:06:52.640Z"
+    },
+    {
+      "type": "listing_posted",
+      "agent": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "task": "Build reputation query endpoint",
+      "amount": "2.00",
+      "at": "2026-02-22T19:07:39.403Z"
     }
   ],
   "stats": {
-    "totalTasks": 1,
-    "totalPaid": 2,
-    "totalClaims": 1,
-    "totalResults": 1
+    "totalTasks": 5,
+    "totalPaid": 10,
+    "totalClaims": 5,
+    "totalResults": 5
   },
   "listings": [
     {
@@ -148,6 +430,132 @@
       "bids": 0,
       "status": "open",
       "createdAt": "2026-02-22T02:21:12.836Z"
+    },
+    {
+      "taskId": "task-1771786834737",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:00:34.738Z"
+    },
+    {
+      "taskId": "task-1771786870606",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:01:10.606Z"
+    },
+    {
+      "taskId": "task-1771786907398",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:01:47.399Z"
+    },
+    {
+      "taskId": "task-1771786979118",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:02:59.118Z"
+    },
+    {
+      "taskId": "task-1771787016839",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:03:36.840Z"
+    },
+    {
+      "taskId": "task-1771787072244",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:04:32.244Z"
+    },
+    {
+      "taskId": "task-1771787122991",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:05:22.991Z"
+    },
+    {
+      "taskId": "task-1771787190739",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:06:30.740Z"
+    },
+    {
+      "taskId": "task-1771787259403",
+      "title": "Build reputation query endpoint",
+      "description": "Create a function that queries on-chain escrow events and returns a trust score for any wallet address. Must read from the TaskEscrow contract on Base.",
+      "budget": "2.00",
+      "skills_needed": [
+        "backend",
+        "smart-contracts"
+      ],
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "bids": 0,
+      "status": "open",
+      "createdAt": "2026-02-22T19:07:39.403Z"
     }
   ],
   "escrows": [
@@ -170,6 +578,61 @@
       "status": "released",
       "txHash": "0x98ad83c3840e4e5ee2140a86c857cb5eb06a4a7def7a58dd4eb9b6a3255e9423",
       "createdAt": "2026-02-22T02:21:12.838Z"
+    },
+    {
+      "taskId": "task-1771786870606",
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "worker": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "amount": "2.00",
+      "deadline": 1771873270,
+      "status": "active",
+      "txHash": "0xa3788b1e0c8f14eb116051eb6918a9f437506483319c1b50a552ab5fb793866e",
+      "createdAt": "2026-02-22T19:01:21.280Z"
+    },
+    {
+      "taskId": "task-1771787016839",
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "worker": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "amount": "2.00",
+      "deadline": 1771873416,
+      "status": "released",
+      "txHash": "0x9bd29b874c47e15d0323d06c263ce557e48a0dcf1127a9621479ef417cabeaf8",
+      "createdAt": "2026-02-22T19:03:51.075Z",
+      "releaseTxHash": "0xc89183e52604dc2c95fabbf76b147510151048e2b7e994a7d84cb90657f08cf2"
+    },
+    {
+      "taskId": "task-1771787072244",
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "worker": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "amount": "2.00",
+      "deadline": 1771873472,
+      "status": "released",
+      "txHash": "0x5153bc123d43493dd18226193c9f087866665cbcd4976961b4f7fcd24e939d24",
+      "createdAt": "2026-02-22T19:04:41.720Z",
+      "releaseTxHash": "0xbf209347cfa0ea4ab40e3d7694db07699b65b579afa410040fbeb63e234ed17b"
+    },
+    {
+      "taskId": "task-1771787122991",
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "worker": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "amount": "2.00",
+      "deadline": 1771873522,
+      "status": "released",
+      "txHash": "0x2aa5f0f66ba31e2dfbbcc9b38c00d151e90f14f087a8c11107facf0518f38654",
+      "createdAt": "2026-02-22T19:05:36.777Z",
+      "releaseTxHash": "0x8edeea0a0d6e99bda276dcfddef63df39b9ce42ec3caa3815a97428ca5b06f58"
+    },
+    {
+      "taskId": "task-1771787190739",
+      "requestor": "0x05ba1f7Fa1e55E146E2bc73b1195f5E61c0fF323",
+      "worker": "0x94D1E6161b19712a96d810940ab4ac212F05673E",
+      "amount": "2.00",
+      "deadline": 1771873590,
+      "status": "released",
+      "txHash": "0x5bec58e71f252a3352475f72c57acac3aafef5dd483bf3f8bc02e3ffa51f319f",
+      "createdAt": "2026-02-22T19:06:39.914Z",
+      "releaseTxHash": "0x2fc84a104d548fe73b3b831ff44d9451965e71ac11bed1da0a466c2e99cd8e86"
     }
-  ]
+  ],
+  "reputation": []
 }
