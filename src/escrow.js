@@ -13,6 +13,7 @@ const ESCROW_ABI = [
 
 const USDC_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)',
   'function decimals() view returns (uint8)',
 ];
 
@@ -67,12 +68,20 @@ export async function createEscrow(wallet, contractAddr, { taskId, worker, amoun
   const amountRaw = ethers.parseUnits(amount.toString(), decimals);
   const taskIdHash = hashTaskId(taskId);
 
-  // Approve escrow contract to spend USDC
+  // Reset allowance to 0 first (USDC requires this), then approve
+  const currentAllowance = await usdc.allowance(wallet.address, contractAddr);
+  if (currentAllowance > 0n) {
+    const resetTx = await usdc.approve(contractAddr, 0);
+    await resetTx.wait();
+  }
   const approveTx = await usdc.approve(contractAddr, amountRaw);
-  await approveTx.wait();
+  await approveTx.wait(1); // wait for 1 block confirmation
 
-  // Create the escrow
-  const tx = await escrow.createEscrow(taskIdHash, worker, amountRaw, deadline);
+  // Small delay to let RPC state propagate (Base RPC caching)
+  await new Promise(r => setTimeout(r, 3000));
+
+  // Create the escrow — use manual gas limit to avoid stale estimateGas
+  const tx = await escrow.createEscrow(taskIdHash, worker, amountRaw, deadline, { gasLimit: 200000n });
   await tx.wait();
 
   return { txHash: tx.hash, taskIdHash };

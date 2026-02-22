@@ -54,8 +54,8 @@ export function registerAgent(address, role = 'worker') {
 }
 
 export function logTask(task, requestor) {
-  const state = loadState();
   registerAgent(requestor, 'requestor');
+  const state = loadState();
   state.tasks.push({
     id: task.id,
     title: task.title,
@@ -81,8 +81,8 @@ export function logTask(task, requestor) {
 }
 
 export function logClaim(taskId, subtaskId, worker) {
-  const state = loadState();
   registerAgent(worker, 'worker');
+  const state = loadState();
   state.stats.totalClaims++;
   state.agents[worker].tasksClaimed++;
   const task = state.tasks.find(t => t.id === taskId);

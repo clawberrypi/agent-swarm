@@ -20,16 +20,40 @@ const ESCROW_ABI = [
  * @param {number} [fromBlock=0] - Starting block (use deployment block for speed)
  * @returns {object} Reputation profile
  */
-export async function buildReputation(provider, escrowAddress, agentAddress, fromBlock = 0) {
+// TaskEscrow was deployed at block 42490000 on Base mainnet (Feb 21, 2026)
+const DEFAULT_FROM_BLOCK = 42490000;
+
+export async function buildReputation(provider, escrowAddress, agentAddress, fromBlock = DEFAULT_FROM_BLOCK) {
   const contract = new ethers.Contract(escrowAddress, ESCROW_ABI, provider);
   const addr = agentAddress.toLowerCase();
 
-  // Fetch all events from the escrow contract
+  // Fetch events in chunks (Base RPC limits to 10,000 blocks per query)
+  const currentBlock = await provider.getBlockNumber();
+  const CHUNK = 9999;
+
+  async function queryInChunks(eventName) {
+    const allEvents = [];
+    for (let start = fromBlock; start <= currentBlock; start += CHUNK) {
+      const end = Math.min(start + CHUNK - 1, currentBlock);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const events = await contract.queryFilter(eventName, start, end);
+          allEvents.push(...events);
+          break;
+        } catch (e) {
+          if (attempt === 2) throw e;
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+    }
+    return allEvents;
+  }
+
   const [created, released, disputed, refunded] = await Promise.all([
-    contract.queryFilter('EscrowCreated', fromBlock),
-    contract.queryFilter('EscrowReleased', fromBlock),
-    contract.queryFilter('EscrowDisputed', fromBlock),
-    contract.queryFilter('EscrowRefunded', fromBlock),
+    queryInChunks('EscrowCreated'),
+    queryInChunks('EscrowReleased'),
+    queryInChunks('EscrowDisputed'),
+    queryInChunks('EscrowRefunded'),
   ]);
 
   // Build a map of taskId -> event data
