@@ -7,7 +7,7 @@ const ESCROW_ABI = [
   'function dispute(bytes32 taskId) external',
   'function resolveDispute(bytes32 taskId, bool releaseToWorker) external',
   'function claimDisputeTimeout(bytes32 taskId) external',
-  'function autoRelease(bytes32 taskId) external',
+  'function releaseAfterDeadline(bytes32 taskId) external',
   'function refund(bytes32 taskId) external',
   'function escrows(bytes32) view returns (address requestor, address worker, uint256 amount, uint256 deadline, uint8 status)',
   'function disputeTimestamps(bytes32) view returns (uint256)',
@@ -22,7 +22,7 @@ const USDC_ABI = [
 ];
 
 // Default deployed TaskEscrow on Base mainnet
-const DEFAULT_ESCROW_ADDRESS = '0x59885D69e3458bD73369322ad558272049F224ec';
+const DEFAULT_ESCROW_ADDRESS = '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
 
 // Compiled bytecode: loaded from build/ if deploying a new instance
 const ESCROW_BYTECODE = null; // Set after compiling contracts/Escrow.sol
@@ -115,9 +115,9 @@ export async function disputeEscrow(wallet, contractAddr, taskId) {
  * @param {string} contractAddr - TaskEscrow address
  * @param {string} taskId - Task ID string
  */
-export async function autoRelease(wallet, contractAddr, taskId) {
+export async function releaseAfterDeadline(wallet, contractAddr, taskId) {
   const escrow = new ethers.Contract(contractAddr, ESCROW_ABI, wallet);
-  const tx = await escrow.autoRelease(hashTaskId(taskId));
+  const tx = await escrow.releaseAfterDeadline(hashTaskId(taskId));
   await tx.wait();
   return { txHash: tx.hash };
 }
