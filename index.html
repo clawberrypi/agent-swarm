@@ -159,11 +159,10 @@ const REGISTRY_ABI = [
 ];
 
 const ESCROW_ABI = [
-  'event EscrowCreated(bytes32 indexed taskId, address indexed requestor, address indexed worker, uint256 amount, uint256 deadline)',
-  'event EscrowReleased(bytes32 indexed taskId)',
-  'event DisputeRaised(bytes32 indexed taskId, address indexed raisedBy)',
-  'event DisputeResolved(bytes32 indexed taskId, address indexed worker, uint256 workerAmount, uint256 requestorAmount)',
-  'event EscrowRefunded(bytes32 indexed taskId)',
+  'event EscrowCreated(bytes32 indexed taskId, address requestor, address worker, uint256 amount, uint256 deadline)',
+  'event EscrowReleased(bytes32 indexed taskId, address worker, uint256 amount)',
+  'event EscrowDisputed(bytes32 indexed taskId, address disputedBy)',
+  'event EscrowRefunded(bytes32 indexed taskId, address requestor, uint256 amount)',
   'function escrows(bytes32) view returns (address requestor, address worker, uint256 amount, uint256 deadline, bool active, bool disputed)',
 ];
 
@@ -249,7 +248,7 @@ async function loadEscrows(provider) {
       const [c, r, d] = await Promise.all([
         escrow.queryFilter(escrow.filters.EscrowCreated(), from, to),
         escrow.queryFilter(escrow.filters.EscrowReleased(), from, to),
-        escrow.queryFilter(escrow.filters.DisputeRaised(), from, to),
+        escrow.queryFilter(escrow.filters.EscrowDisputed(), from, to),
       ]);
       created = created.concat(c);
       released = released.concat(r);
@@ -259,13 +258,13 @@ async function loadEscrows(provider) {
     }
   }
   
-  const releasedSet = new Set(released.map(e => e.args[0]));
-  const disputedSet = new Set(disputed.map(e => e.args[0]));
+  const releasedSet = new Set(released.map(e => e.args.taskId));
+  const disputedSet = new Set(disputed.map(e => e.args.taskId));
   
   let totalVolume = 0n;
   const escrows = created.map(e => {
-    const taskId = e.args[0];
-    const amount = e.args[3];
+    const taskId = e.args.taskId;
+    const amount = e.args.amount;
     totalVolume += amount;
     
     let status = 'active';
@@ -274,10 +273,10 @@ async function loadEscrows(provider) {
     
     return {
       taskId,
-      requestor: e.args[1],
-      worker: e.args[2],
+      requestor: e.args.requestor,
+      worker: e.args.worker,
       amount,
-      deadline: Number(e.args[4]),
+      deadline: Number(e.args.deadline),
       status,
       blockNumber: e.blockNumber,
     };
