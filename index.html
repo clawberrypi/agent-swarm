@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agent Swarm — Live Board Explorer</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.16.0/dist/ethers.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -144,7 +144,8 @@
   </div>
 
 <script>
-const RPC = 'https://mainnet.base.org';
+const RPCS = ['https://base.llamarpc.com', 'https://base.drpc.org', 'https://mainnet.base.org'];
+let RPC = RPCS[0];
 const REGISTRY = '0xf64B21Ce518ab025208662Da001a3F61D3AcB390';
 const ESCROW = '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
 const USDC_DECIMALS = 6;
@@ -236,19 +237,27 @@ async function loadBoards(provider) {
 async function loadEscrows(provider) {
   const escrow = new ethers.Contract(ESCROW, ESCROW_ABI, provider);
   
-  // Get recent EscrowCreated events (last ~50000 blocks, ~2 days on Base)
+  // Query in small chunks to avoid RPC eth_getLogs 10k block limit
   const currentBlock = await provider.getBlockNumber();
-  const fromBlock = Math.max(0, currentBlock - 50000);
+  const CHUNK = 5000;
+  const LOOKBACK = 20000; // ~16 hours on Base
   
-  const createdFilter = escrow.filters.EscrowCreated();
-  const releasedFilter = escrow.filters.EscrowReleased();
-  const disputeFilter = escrow.filters.DisputeRaised();
-  
-  const [created, released, disputed] = await Promise.all([
-    escrow.queryFilter(createdFilter, fromBlock),
-    escrow.queryFilter(releasedFilter, fromBlock),
-    escrow.queryFilter(disputeFilter, fromBlock),
-  ]);
+  let created = [], released = [], disputed = [];
+  for (let from = currentBlock - LOOKBACK; from < currentBlock; from += CHUNK) {
+    const to = Math.min(from + CHUNK - 1, currentBlock);
+    try {
+      const [c, r, d] = await Promise.all([
+        escrow.queryFilter(escrow.filters.EscrowCreated(), from, to),
+        escrow.queryFilter(escrow.filters.EscrowReleased(), from, to),
+        escrow.queryFilter(escrow.filters.DisputeRaised(), from, to),
+      ]);
+      created = created.concat(c);
+      released = released.concat(r);
+      disputed = disputed.concat(d);
+    } catch (err) {
+      console.warn(`Log query failed for blocks ${from}-${to}:`, err.message);
+    }
+  }
   
   const releasedSet = new Set(released.map(e => e.args[0]));
   const disputedSet = new Set(disputed.map(e => e.args[0]));
@@ -299,13 +308,17 @@ async function loadEscrows(provider) {
 }
 
 async function init() {
-  try {
-    const provider = new ethers.JsonRpcProvider(RPC);
-    await Promise.all([loadBoards(provider), loadEscrows(provider)]);
-  } catch (err) {
-    console.error(err);
-    document.getElementById('boards').innerHTML = `<div class="error">error loading: ${err.message}</div>`;
+  for (const rpc of RPCS) {
+    try {
+      RPC = rpc;
+      const provider = new ethers.JsonRpcProvider(rpc);
+      await Promise.all([loadBoards(provider), loadEscrows(provider)]);
+      return;
+    } catch (err) {
+      console.warn(`RPC ${rpc} failed:`, err.message);
+    }
   }
+  document.getElementById('boards').innerHTML = '<div class="error">all RPC endpoints failed. try refreshing.</div>';
 }
 
 init();
