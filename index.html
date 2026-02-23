@@ -206,9 +206,13 @@ async function loadBoards(provider) {
     return;
   }
   
+  // Pin the main board to top
+  const MAIN_BOARD = '0xd021e1df1839a3c91f900ecc32bb83fa9bb9bfb0dfd46c9f9c3cfb9f7bb46e56';
+  boards.sort((a, b) => a.id === MAIN_BOARD ? -1 : b.id === MAIN_BOARD ? 1 : b.memberCount - a.memberCount);
+  
   container.innerHTML = boards.map(b => `
-    <div class="board-card">
-      <div class="board-name">${b.name}</div>
+    <div class="board-card" ${b.id === MAIN_BOARD ? 'style="border-color: #4ade80;"' : ''}>
+      <div class="board-name">${b.id === MAIN_BOARD ? '<span style="color:#4ade80;font-size:12px;margin-right:6px;">MAIN</span>' : ''}${b.name}</div>
       <div class="board-desc">${b.description}</div>
       <div class="board-meta">
         <span>${b.memberCount} member${b.memberCount !== 1 ? 's' : ''}</span>
