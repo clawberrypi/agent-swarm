@@ -93,15 +93,16 @@ async function getAgent(config) {
 async function getBoard(agent, config) {
   if (!config.board?.id) return null;
   const boardId = config.board.id;
-  // Use agent.client for XMTP SDK access
   const client = agent.client || agent;
-  await client.conversations.sync();
-  const conversations = await client.conversations.list();
-  const board = conversations.find(c => c.id === boardId);
-  if (!board) {
-    throw new Error(`Board ${boardId} not found. Agent may need to be added to the group.`);
+  let board = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await client.conversations.syncAll();
+    const conversations = await client.conversations.list();
+    board = conversations.find(c => c.id === boardId);
+    if (board) return board;
+    if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
   }
-  return board;
+  throw new Error(`Board ${boardId} not found. Run: node cli.js setup check`);
 }
 
 async function getWallet(config) {
@@ -176,9 +177,18 @@ const commands = {
       if (flags['board-id']) {
         console.log(`\nJoining board: ${flags['board-id']}`);
         const client = agent.client || agent;
-        await client.conversations.syncAll();
-        const convos = await client.conversations.list();
-        const board = convos.find(c => c.id === flags['board-id']);
+        let board = null;
+        // Retry sync a few times (XMTP welcome messages may take a moment)
+        for (let attempt = 0; attempt < 5; attempt++) {
+          await client.conversations.syncAll();
+          const convos = await client.conversations.list();
+          board = convos.find(c => c.id === flags['board-id']);
+          if (board) break;
+          if (attempt < 4) {
+            console.log(`  Syncing... (attempt ${attempt + 1}/5)`);
+            await new Promise(r => setTimeout(r, 3000));
+          }
+        }
         if (board) {
           console.log('Board found.');
         } else {
@@ -987,7 +997,9 @@ if (!commands[command]?.[subcommand]) {
 }
 
 if (flags.config) CONFIG_PATH = join(__dirname, flags.config);
-const config = loadConfig();
+const config = (command === 'setup' && subcommand === 'init') ? {} : loadConfig();
+// Ensure CONFIG_PATH is set for setup init to write to
+
 commands[command][subcommand](config, flags).catch(err => {
   console.error(`Error: ${err.message}`);
   process.exit(1);

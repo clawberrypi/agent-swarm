@@ -18,6 +18,8 @@ const ESCROW_ABI = [
 
 const USDC_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function balanceOf(address) view returns (uint256)',
   'function decimals() view returns (uint8)',
 ];
 
@@ -72,9 +74,12 @@ export async function createEscrow(wallet, contractAddr, { taskId, worker, amoun
   const amountRaw = ethers.parseUnits(amount.toString(), decimals);
   const taskIdHash = hashTaskId(taskId);
 
-  // Approve escrow contract to spend USDC
-  const approveTx = await usdc.approve(contractAddr, amountRaw);
-  await approveTx.wait();
+  // Approve escrow contract to spend USDC (use max to avoid repeated approvals)
+  const allowance = await usdc.allowance(wallet.address, contractAddr);
+  if (allowance < amountRaw) {
+    const approveTx = await usdc.approve(contractAddr, ethers.MaxUint256);
+    await approveTx.wait();
+  }
 
   // Create the escrow
   const tx = await escrow.createEscrow(taskIdHash, worker, amountRaw, deadline);
