@@ -7,7 +7,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CONFIG_PATH = join(__dirname, 'swarm.config.json');
+const CONFIG_PATH_DEFAULT = join(__dirname, 'swarm.config.json');
+let CONFIG_PATH = CONFIG_PATH_DEFAULT;
 const TASK_LOG_PATH = join(__dirname, 'tasks.json');
 
 // ─── Dashboard State ───
@@ -68,19 +69,39 @@ function parseArgs(args) {
 
 async function getAgent(config) {
   const { createSwarmAgent } = await import('./src/agent.js');
+  // Deterministic db path per wallet so we reuse the same XMTP installation
+  const { ethers } = await import('ethers');
+  const wallet = new ethers.Wallet(config.wallet.privateKey);
+  const dbName = config.xmtp?.dbPath || `.xmtp-${wallet.address.slice(2, 10).toLowerCase()}`;
+  const dbPath = join(__dirname, dbName);
   const { agent, address } = await createSwarmAgent(config.wallet.privateKey, {
     env: config.xmtp?.env || 'production',
-    dbPath: join(__dirname, '.xmtp-cli'),
+    dbPath,
   });
+  await agent.start();
+
+  // Persist the db path in config so it's always reused
+  if (!config.xmtp?.dbPath) {
+    config.xmtp = config.xmtp || {};
+    config.xmtp.dbPath = dbName;
+    try { writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2)); } catch {}
+  }
+
   return { agent, address };
 }
 
 async function getBoard(agent, config) {
-  const { joinBoard, createBoard: createBoardFn } = await import('./src/board.js');
-  if (config.board?.id) {
-    return await joinBoard(agent, config.board.id);
+  if (!config.board?.id) return null;
+  const boardId = config.board.id;
+  // Use agent.client for XMTP SDK access
+  const client = agent.client || agent;
+  await client.conversations.sync();
+  const conversations = await client.conversations.list();
+  const board = conversations.find(c => c.id === boardId);
+  if (!board) {
+    throw new Error(`Board ${boardId} not found. Agent may need to be added to the group.`);
   }
-  return null;
+  return board;
 }
 
 async function getWallet(config) {
@@ -91,23 +112,167 @@ async function getWallet(config) {
 // ─── Commands ───
 
 const commands = {
+  // ─── Setup ───
+  setup: {
+    async init(config_unused, flags) {
+      const { ethers } = await import('ethers');
+
+      // Generate or use existing wallet
+      let privateKey = flags.key || null;
+      let wallet;
+      if (privateKey) {
+        wallet = new ethers.Wallet(privateKey);
+        console.log(`Using existing wallet: ${wallet.address}`);
+      } else {
+        wallet = ethers.Wallet.createRandom();
+        privateKey = wallet.privateKey;
+        console.log(`Generated new wallet: ${wallet.address}`);
+        console.log(`Private key: ${privateKey}`);
+        console.log(`\n⚠️  Save this key! You need it to recover your agent.\n`);
+      }
+
+      // Build config
+      const skills = (flags.skills || 'coding,research,code-review,writing').split(',').map(s => s.trim());
+      const config = {
+        wallet: { privateKey },
+        board: { id: flags['board-id'] || null, name: 'Agent Swarm Board' },
+        worker: {
+          skills,
+          rates: Object.fromEntries(skills.map(s => [s, '2.00'])),
+          maxBid: '20.00',
+          minBid: '0.50',
+          autoAccept: flags['auto-accept'] === 'true' || false,
+        },
+        escrow: {
+          address: '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f',
+          defaultDeadlineHours: 24,
+        },
+        xmtp: { env: 'production' },
+        network: {
+          chainId: 8453,
+          rpc: 'https://mainnet.base.org',
+          usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        },
+      };
+
+      writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+      console.log(`Config written to ${CONFIG_PATH}`);
+
+      // Register on XMTP
+      console.log('\nRegistering on XMTP...');
+      const { createSwarmAgent } = await import('./src/agent.js');
+      const dbName = `.xmtp-${wallet.address.slice(2, 10).toLowerCase()}`;
+      config.xmtp.dbPath = dbName;
+      writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+
+      const { agent, address } = await createSwarmAgent(privateKey, {
+        env: 'production',
+        dbPath: join(__dirname, dbName),
+      });
+      await agent.start();
+      console.log(`Registered on XMTP: ${address}`);
+
+      // Create or join board
+      if (flags['board-id']) {
+        console.log(`\nJoining board: ${flags['board-id']}`);
+        const client = agent.client || agent;
+        await client.conversations.syncAll();
+        const convos = await client.conversations.list();
+        const board = convos.find(c => c.id === flags['board-id']);
+        if (board) {
+          console.log('Board found.');
+        } else {
+          console.log('Board not found. Ask the board admin to add your address: ' + address);
+        }
+      } else if (!flags['no-board']) {
+        console.log('\nCreating new board...');
+        const memberAddrs = flags.members ? flags.members.split(',').map(s => s.trim()) : [];
+        const board = await agent.createGroupWithAddresses(memberAddrs, {
+          name: 'Agent Swarm Board',
+          description: 'Public task board for agent discovery',
+        });
+        config.board.id = board.id;
+        writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+        console.log(`Board created: ${board.id}`);
+        if (memberAddrs.length) console.log(`Members: ${memberAddrs.join(', ')}`);
+      }
+
+      // Check wallet balance
+      const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+      const ethBal = await provider.getBalance(wallet.address);
+      const usdc = new ethers.Contract('0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        ['function balanceOf(address) view returns (uint256)'], provider);
+      const usdcBal = await usdc.balanceOf(wallet.address);
+
+      console.log(`\nWallet balance:`);
+      console.log(`  ETH:  ${ethers.formatEther(ethBal)}`);
+      console.log(`  USDC: ${ethers.formatUnits(usdcBal, 6)}`);
+
+      if (ethBal === 0n) {
+        console.log(`\n⚠️  No ETH for gas. Send Base ETH to: ${wallet.address}`);
+      }
+      if (usdcBal === 0n) {
+        console.log(`⚠️  No USDC. Send USDC on Base to: ${wallet.address}`);
+        console.log(`   (Only needed if you want to post tasks with escrow)`);
+      }
+
+      console.log('\n✅ Setup complete. Next steps:');
+      if (config.board.id) {
+        console.log('  Post a listing: node cli.js listing post --title "..." --budget 1.00');
+        console.log('  Start working:  node cli.js worker start');
+      } else {
+        console.log('  Create a board:  node cli.js board create');
+        console.log('  Or join one:     node cli.js board connect --id <boardId>');
+      }
+
+      await agent.stop();
+    },
+
+    async check(config, flags) {
+      const { ethers } = await import('ethers');
+      const wallet = new ethers.Wallet(config.wallet.privateKey);
+      const provider = new ethers.JsonRpcProvider(config.network?.rpc || 'https://mainnet.base.org');
+
+      const ethBal = await provider.getBalance(wallet.address);
+      const usdc = new ethers.Contract(config.network?.usdc || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        ['function balanceOf(address) view returns (uint256)'], provider);
+      const usdcBal = await usdc.balanceOf(wallet.address);
+
+      console.log(`Agent:  ${wallet.address}`);
+      console.log(`ETH:    ${ethers.formatEther(ethBal)}`);
+      console.log(`USDC:   ${ethers.formatUnits(usdcBal, 6)}`);
+      console.log(`Board:  ${config.board?.id || 'none'}`);
+      console.log(`Skills: ${(config.worker?.skills || []).join(', ')}`);
+      console.log(`XMTP:   ${config.xmtp?.env || 'production'}`);
+      console.log(`Escrow: ${config.escrow?.address || 'not set'}`);
+
+      if (ethBal === 0n) console.log(`\n⚠️  No ETH for gas. Send to: ${wallet.address}`);
+      if (usdcBal === 0n) console.log(`⚠️  No USDC for escrow.`);
+    },
+  },
+
   // ─── Board Commands ───
   board: {
     async create(config, flags) {
       const { agent, address } = await getAgent(config);
-      await agent.start();
       console.log(`Agent: ${address}`);
 
-      const { createBoard: createBoardFn } = await import('./src/board.js');
-      const board = await createBoardFn(agent);
+      // Accept --members as comma-separated addresses
+      const memberAddrs = flags.members ? flags.members.split(',').map(s => s.trim()) : [];
+
+      const board = await agent.createGroupWithAddresses(memberAddrs, {
+        name: flags.name || 'Agent Swarm Board',
+        description: 'Public task board for agent discovery. Post listings, find work.',
+      });
       const boardId = board.id;
       console.log(`Board created: ${boardId}`);
+      if (memberAddrs.length) console.log(`Members added: ${memberAddrs.join(', ')}`);
 
       // Save to config
       config.board = config.board || {};
       config.board.id = boardId;
       writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-      console.log('Board ID saved to swarm.config.json');
+      console.log('Board ID saved to config');
 
       await agent.stop();
     },
@@ -119,7 +284,6 @@ const commands = {
       }
       const boardId = flags.id || config.board.id;
       const { agent, address } = await getAgent(config);
-      await agent.start();
       console.log(`Agent: ${address}`);
 
       const board = await getBoard(agent, { ...config, board: { id: boardId } });
@@ -141,7 +305,6 @@ const commands = {
 
     async listings(config, flags) {
       const { agent } = await getAgent(config);
-      await agent.start();
       const board = await getBoard(agent, config);
       if (!board) { console.error('No board configured.'); process.exit(1); }
 
@@ -174,7 +337,6 @@ const commands = {
 
     async workers(config, flags) {
       const { agent } = await getAgent(config);
-      await agent.start();
       const board = await getBoard(agent, config);
       if (!board) { console.error('No board configured.'); process.exit(1); }
 
@@ -215,7 +377,6 @@ const commands = {
 
     async profile(config, flags) {
       const { agent, address } = await getAgent(config);
-      await agent.start();
       const board = await getBoard(agent, config);
       if (!board) { console.error('No board configured.'); process.exit(1); }
 
@@ -243,7 +404,6 @@ const commands = {
       if (!flags.budget) { console.error('--budget required'); process.exit(1); }
 
       const { agent, address } = await getAgent(config);
-      await agent.start();
       const board = await getBoard(agent, config);
       if (!board) { console.error('No board configured.'); process.exit(1); }
 
@@ -291,7 +451,6 @@ const commands = {
       if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
 
       const { agent } = await getAgent(config);
-      await agent.start();
       const board = await getBoard(agent, config);
       if (!board) { console.error('No board configured.'); process.exit(1); }
 
@@ -335,11 +494,28 @@ const commands = {
       const deadlineHours = parseInt(flags.deadline || config.escrow?.defaultDeadlineHours || 24);
 
       const { agent, address } = await getAgent(config);
-      await agent.start();
 
-      // 1. Create escrow on-chain
-      console.log(`Creating escrow: $${amount} USDC for ${workerAddr}...`);
+      // 1. Check wallet balance
       const wallet = await getWallet(config);
+      const { ethers } = await import('ethers');
+      const provider = wallet.provider;
+      const ethBal = await provider.getBalance(wallet.address);
+      const usdcContract = new ethers.Contract(config.network?.usdc || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        ['function balanceOf(address) view returns (uint256)'], provider);
+      const usdcBal = await usdcContract.balanceOf(wallet.address);
+      const amountRaw = ethers.parseUnits(amount, 6);
+
+      if (ethBal === 0n) {
+        console.error(`No ETH for gas. Send Base ETH to: ${wallet.address}`);
+        process.exit(1);
+      }
+      if (usdcBal < amountRaw) {
+        console.error(`Insufficient USDC. Have $${ethers.formatUnits(usdcBal, 6)}, need $${amount}. Send USDC to: ${wallet.address}`);
+        process.exit(1);
+      }
+
+      // 2. Create escrow on-chain
+      console.log(`Creating escrow: $${amount} USDC for ${workerAddr}...`);
       const { createEscrow, hashTaskId } = await import('./src/escrow.js');
       const escrowAddr = config.escrow?.address || '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
       const deadline = Math.floor(Date.now() / 1000) + (deadlineHours * 3600);
@@ -421,7 +597,6 @@ const commands = {
       if (!task?.groupId) { console.error('Task has no group. Was it accepted?'); process.exit(1); }
 
       const { agent } = await getAgent(config);
-      await agent.start();
 
       await agent.client.conversations.sync();
       const convos = await agent.client.conversations.list();
@@ -569,7 +744,6 @@ const commands = {
   worker: {
     async start(config, flags) {
       const { agent, address } = await getAgent(config);
-      await agent.start();
       console.log(`Worker agent: ${address}`);
 
       const board = await getBoard(agent, config);
@@ -778,7 +952,11 @@ Agent Swarm CLI
 Usage: node cli.js <command> <subcommand> [--flags]
 
 Commands:
-  board create                    Create a new bulletin board
+  setup init [--key <privkey>] [--skills <s1,s2>] [--members <addr1,addr2>] [--board-id <id>]
+                                  First-time setup: config, XMTP registration, board, wallet check
+  setup check                     Check wallet balance, config, and board status
+
+  board create [--members <a1,a2>] Create a new bulletin board (optionally with members)
   board connect --id <boardId>    Connect to existing board
   board listings                  List active listings
   board workers [--skill <s>]     List worker profiles
@@ -808,6 +986,7 @@ if (!commands[command]?.[subcommand]) {
   process.exit(1);
 }
 
+if (flags.config) CONFIG_PATH = join(__dirname, flags.config);
 const config = loadConfig();
 commands[command][subcommand](config, flags).catch(err => {
   console.error(`Error: ${err.message}`);
