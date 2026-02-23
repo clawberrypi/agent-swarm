@@ -271,6 +271,7 @@ const ESCROW_ABI = [
 ];
 
 const short = a => a.slice(0, 6) + '...' + a.slice(-4);
+const fmtUSDC = amt => parseFloat(ethers.formatUnits(amt, USDC_DECIMALS)).toFixed(2);
 const bsLink = a => `<a href="https://basescan.org/address/${a}">${short(a)}</a>`;
 const timeAgo = ts => {
   const d = Math.floor(Date.now()/1000) - ts;
@@ -392,7 +393,7 @@ async function loadBoards(provider) {
           <div class="board-escrows">
             ${boardEscrows.map(e => `
               <div class="board-escrow-row">
-                <span style="color: #4ade80; font-weight: 600;">$${ethers.formatUnits(e.amount, USDC_DECIMALS)}</span>
+                <span style="color: #4ade80; font-weight: 600;">$${fmtUSDC(e.amount)}</span>
                 <span class="addr">${short(e.requestor)} → ${short(e.worker)}</span>
                 <span class="escrow-status status-${e.status}">${e.status}</span>
               </div>
@@ -459,7 +460,7 @@ async function loadEscrows(provider) {
   
   document.getElementById('escrow-count').textContent = escrows.length;
   document.getElementById('released-count').textContent = releasedCount;
-  document.getElementById('total-volume').textContent = '$' + ethers.formatUnits(totalVolume, USDC_DECIMALS);
+  document.getElementById('total-volume').textContent = '$' + fmtUSDC(totalVolume);
   document.getElementById('escrow-badge').textContent = escrows.length + ' total';
   
   renderEscrows('all');
@@ -477,7 +478,7 @@ function renderEscrows(filter) {
   container.innerHTML = filtered.map(e => `
     <div class="escrow-card">
       <div class="escrow-row">
-        <span class="escrow-amount">$${ethers.formatUnits(e.amount, USDC_DECIMALS)} USDC</span>
+        <span class="escrow-amount">$${fmtUSDC(e.amount)} USDC</span>
         <span class="escrow-status status-${e.status}">${e.status}</span>
       </div>
       <div class="escrow-parties">
