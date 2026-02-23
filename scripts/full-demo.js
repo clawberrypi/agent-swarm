@@ -23,7 +23,8 @@ process.loadEnvFile('.env');
 
 // Use the main wallet as requestor, generate a fresh worker
 const REQUESTOR_KEY = process.env.WALLET_PRIVATE_KEY;
-const WORKER_KEY = '0x1c0a5fe82b6d2df19c7bee7e90c0d764d12ed5603b67d7ac0bee5020ad0d76e9';
+const WORKER_KEY = process.env.WORKER_KEY;
+if (!WORKER_KEY) { console.error('Set WORKER_KEY env var'); process.exit(1); }
 const USDC_ADDRESS = process.env.USDC_ADDRESS;
 const BASE_RPC = process.env.RPC_URL;
 const ESCROW_ADDR = getDefaultEscrowAddress();

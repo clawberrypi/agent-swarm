@@ -12,8 +12,9 @@ import { ethers } from 'ethers';
 
 process.loadEnvFile('.env');
 
-const REQUESTOR_KEY = '0x9a75a58fa0107ccc5449ac178e2fdf01cc88cc3a55d4938c181131d4ac2293ae';
-const WORKER_KEY = '0x1c0a5fe82b6d2df19c7bee7e90c0d764d12ed5603b67d7ac0bee5020ad0d76e9';
+const REQUESTOR_KEY = process.env.REQUESTOR_KEY;
+const WORKER_KEY = process.env.WORKER_KEY;
+if (!REQUESTOR_KEY || !WORKER_KEY) { console.error('Set REQUESTOR_KEY and WORKER_KEY env vars'); process.exit(1); }
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const BASE_RPC = 'https://mainnet.base.org';
 
