@@ -213,6 +213,42 @@ export function logReputation(rep) {
   saveState(state);
 }
 
+export function logProgress(taskId, worker, percent, status) {
+  const state = loadState();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (task) {
+    task.progress = percent;
+    task.progressStatus = status || 'working';
+  }
+  state.activity.push({
+    type: 'progress_update',
+    agent: worker,
+    taskId,
+    percent,
+    status: status || 'working',
+    at: new Date().toISOString()
+  });
+  if (state.activity.length > 50) state.activity = state.activity.slice(-50);
+  saveState(state);
+}
+
+export function logCancel(taskId, sender, reason) {
+  const state = loadState();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (task) task.status = 'cancelled';
+  const escrow = state.escrows.find(e => e.taskId === taskId);
+  if (escrow) escrow.status = 'refunded';
+  state.activity.push({
+    type: 'task_cancelled',
+    agent: sender,
+    taskId,
+    reason: reason || null,
+    at: new Date().toISOString()
+  });
+  if (state.activity.length > 50) state.activity = state.activity.slice(-50);
+  saveState(state);
+}
+
 export function getState() {
   return loadState();
 }

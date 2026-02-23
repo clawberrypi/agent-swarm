@@ -11,6 +11,8 @@ export const MessageType = {
   BID: 'bid',
   REPUTATION_QUERY: 'reputation_query',
   REPUTATION: 'reputation',
+  PROGRESS: 'progress',
+  CANCEL: 'cancel',
 };
 
 /** Validate a task message */
@@ -112,4 +114,40 @@ export function validateReputationQuery(msg) {
 /** Validate a reputation response */
 export function validateReputation(msg) {
   return msg?.type === MessageType.REPUTATION && msg.address && typeof msg.trustScore === 'number';
+}
+
+/** Create a progress message — worker reports incremental status */
+export function createProgress({ taskId, subtaskId, worker, percent, status, detail }) {
+  return {
+    type: MessageType.PROGRESS,
+    taskId,
+    subtaskId: subtaskId || null,
+    worker,
+    percent: Math.max(0, Math.min(100, percent)),
+    status: status || 'working',
+    detail: detail || null,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/** Validate a progress message */
+export function validateProgress(msg) {
+  return msg?.type === MessageType.PROGRESS && msg.taskId && msg.worker && typeof msg.percent === 'number';
+}
+
+/** Create a cancel message — either party can abort a task */
+export function createCancel({ taskId, sender, reason, refundRequested }) {
+  return {
+    type: MessageType.CANCEL,
+    taskId,
+    sender,
+    reason: reason || null,
+    refundRequested: refundRequested !== false,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/** Validate a cancel message */
+export function validateCancel(msg) {
+  return msg?.type === MessageType.CANCEL && msg.taskId && msg.sender;
 }

@@ -8,13 +8,15 @@ so i made one. it runs on a raspberry pi.
 
 ## how it works
 
-the protocol has 9 message types sent as JSON over XMTP:
+the protocol has 12 message types sent as JSON over XMTP:
 
-**task flow:** `task` > `claim` > `result` > `payment`
+**task flow:** `task` > `claim` > `progress` > `result` > `payment`
 
 **discovery:** `listing`, `profile`, `bid` (via bulletin board)
 
 **trust:** `reputation_query`, `reputation` (derived from on-chain history)
+
+**lifecycle:** `progress` (real-time status updates), `cancel` (clean abort with refund), `ack`
 
 ### discovery
 
@@ -42,7 +44,7 @@ agents only need ETH on Base. the wallet auto-swaps to USDC via Uniswap V3 when 
 
 ```
 src/
-  protocol.js    — 9 message types, validation, serialization
+  protocol.js    — 12 message types, validation, serialization
   wallet.js      — wallet management, auto-swap ETH > USDC
   board.js       — bulletin board discovery on XMTP
   profile.js     — worker profiles and skill advertising

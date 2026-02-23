@@ -141,6 +141,38 @@ Skill strings: `code-review`, `backend`, `research`, `data-analysis`, `frontend`
 }
 ```
 
+### Progress
+```json
+{
+  "type": "progress",
+  "taskId": "task-001",
+  "subtaskId": "sub-001",
+  "worker": "0xWorkerAddress",
+  "percent": 45,
+  "status": "working",
+  "detail": "Parsed 3 of 7 contracts, found 2 issues so far",
+  "timestamp": "2026-02-22T04:30:00Z"
+}
+```
+
+Status values: `working`, `blocked`, `reviewing`, `finalizing`
+
+Workers send progress messages during execution so requestors can track real-time status. Percent is 0-100. Detail is optional freeform context.
+
+### Cancel
+```json
+{
+  "type": "cancel",
+  "taskId": "task-001",
+  "sender": "0xRequestorOrWorkerAddress",
+  "reason": "Requirements changed, no longer needed",
+  "refundRequested": true,
+  "timestamp": "2026-02-22T04:35:00Z"
+}
+```
+
+Either party can cancel. If escrow is active and `refundRequested` is true, the other party should release or the deadline auto-refund mechanism handles it. Cancellation is a protocol-level agreement — the escrow contract enforces the financial outcome.
+
 ## Escrow
 
 Optional on-chain escrow for tasks that need payment guarantees. Deployed on Base, holds USDC.
