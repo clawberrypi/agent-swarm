@@ -407,6 +407,129 @@ const commands = {
     },
   },
 
+  // ─── Registry Commands (on-chain board discovery) ───
+  registry: {
+    async list(config, flags) {
+      const { listAllBoards } = await import('./src/registry.js');
+      const limit = parseInt(flags.limit || '20');
+      const { boards, total } = await listAllBoards(limit);
+      console.log(`${boards.length} active board(s) (${total} total):\n`);
+      for (const b of boards) {
+        console.log(`  ${b.id}`);
+        console.log(`    Name: ${b.name}`);
+        console.log(`    Skills: ${b.skills.join(', ')}`);
+        console.log(`    Members: ${b.memberCount}`);
+        console.log(`    Owner: ${b.owner}`);
+        console.log(`    XMTP Group: ${b.xmtpGroupId}`);
+        console.log('');
+      }
+    },
+
+    async register(config, flags) {
+      if (!config.board?.id) {
+        console.error('No board in config. Run: node cli.js board create');
+        process.exit(1);
+      }
+      const wallet = await getWallet(config);
+      const { registerBoard } = await import('./src/registry.js');
+      const name = flags.name || config.board?.name || 'Agent Swarm Board';
+      const description = flags.description || 'Open task board for agent work';
+      const skills = (flags.skills || config.worker?.skills || []).join ? 
+        (flags.skills ? flags.skills.split(',') : config.worker?.skills || []) :
+        config.worker?.skills || [];
+
+      console.log(`Registering board on-chain...`);
+      const { txHash, boardId } = await registerBoard(wallet, config.board.id, name, description, skills);
+      console.log(`Registered: ${boardId}`);
+      console.log(`Tx: ${txHash}`);
+
+      config.registry = config.registry || {};
+      config.registry.boardId = boardId;
+      writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+      console.log('Registry board ID saved to config.');
+    },
+
+    async join(config, flags) {
+      const boardId = flags['board-id'] || flags.id;
+      if (!boardId) {
+        console.error('Usage: node cli.js registry join --board-id <registryBoardId>');
+        process.exit(1);
+      }
+      const wallet = await getWallet(config);
+      const { requestJoinBoard, getReadonlyRegistry } = await import('./src/registry.js');
+
+      // Get board info
+      const registry = getReadonlyRegistry();
+      const [owner, xmtpGroupId, name, , skills, memberCount] = await registry.getBoard(boardId);
+      console.log(`Board: ${name}`);
+      console.log(`Skills: ${skills.join(', ')}`);
+      console.log(`Members: ${Number(memberCount)}`);
+      console.log(`XMTP Group: ${xmtpGroupId}\n`);
+
+      const mySkills = config.worker?.skills || [];
+      console.log(`Requesting to join with skills: ${mySkills.join(', ')}...`);
+      const { txHash } = await requestJoinBoard(wallet, boardId, wallet.address, mySkills);
+      console.log(`Join request submitted: ${txHash}`);
+      console.log('Board owner will review and add you to the XMTP group.');
+    },
+
+    async requests(config, flags) {
+      const boardId = config.registry?.boardId || flags['board-id'];
+      if (!boardId) {
+        console.error('No registry board ID. Run: node cli.js registry register');
+        process.exit(1);
+      }
+      const { getPendingRequests } = await import('./src/registry.js');
+      const requests = await getPendingRequests(boardId);
+      if (!requests.length) {
+        console.log('No pending join requests.');
+        return;
+      }
+      console.log(`${requests.length} pending request(s):\n`);
+      for (const r of requests) {
+        console.log(`  [${r.index}] ${r.agent}`);
+        console.log(`       XMTP: ${r.xmtpAddress}`);
+        console.log(`       Skills: ${r.skills.join(', ')}`);
+        console.log(`       Requested: ${new Date(r.requestedAt * 1000).toISOString()}`);
+        console.log('');
+      }
+    },
+
+    async approve(config, flags) {
+      const boardId = config.registry?.boardId || flags['board-id'];
+      const index = parseInt(flags.index ?? flags.i);
+      if (!boardId || isNaN(index)) {
+        console.error('Usage: node cli.js registry approve --index <i> [--board-id <id>]');
+        process.exit(1);
+      }
+
+      // Approve on-chain
+      const wallet = await getWallet(config);
+      const { approveJoinRequest, getReadonlyRegistry } = await import('./src/registry.js');
+      const registry = getReadonlyRegistry();
+      const [agent, xmtpAddress] = await registry.getJoinRequest(boardId, index);
+
+      console.log(`Approving ${agent}...`);
+      const { txHash } = await approveJoinRequest(wallet, boardId, index);
+      console.log(`Approved on-chain: ${txHash}`);
+
+      // Add to XMTP group
+      if (config.board?.id) {
+        console.log(`Adding ${xmtpAddress} to XMTP board...`);
+        try {
+          const { agent: xmtpAgent } = await getAgent(config);
+          const board = await getBoard(xmtpAgent, config);
+          await board.addMembers([xmtpAddress]);
+          console.log('Added to XMTP group.');
+          await xmtpAgent.stop();
+        } catch (err) {
+          console.log(`Could not auto-add to XMTP group: ${err.message}`);
+          console.log(`Manually add ${xmtpAddress} to group ${config.board.id}`);
+        }
+      }
+    },
+  },
+
   // ─── Listing Commands ───
   listing: {
     async post(config, flags) {
@@ -972,6 +1095,12 @@ Commands:
   board workers [--skill <s>]     List worker profiles
   board profile                   Post your worker profile
   board find-workers --skill <s>  Find workers with a skill
+
+  registry list                      Browse all registered boards on-chain
+  registry register [--name <n>]     Register your board on-chain for discovery
+  registry join --board-id <id>      Request to join a board
+  registry requests                  View pending join requests (board owner)
+  registry approve --index <i>       Approve a join request + add to XMTP group
 
   listing post --title <t> --budget <b> [--skills <s1,s2>] [--category <c>]
   listing bids --task-id <id>     View bids on a listing
