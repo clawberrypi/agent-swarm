@@ -240,7 +240,7 @@ async function loadEscrows(provider) {
   // Query in small chunks to avoid RPC eth_getLogs 10k block limit
   const currentBlock = await provider.getBlockNumber();
   const CHUNK = 9999;
-  const DEPLOY_BLOCK = 42539500; // Escrow contract deployed around this block
+  const DEPLOY_BLOCK = 42544000; // Start from latest test runs
   
   let created = [], released = [], disputed = [];
   for (let from = DEPLOY_BLOCK; from < currentBlock; from += CHUNK) {
