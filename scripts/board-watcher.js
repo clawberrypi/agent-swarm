@@ -102,29 +102,41 @@ async function run() {
     });
     await agent.start();
 
-    // Collect all member addresses (existing + new)
-    const allMembers = [...new Set([
-      ...state.members,
-      ...newRequests.map(r => r.xmtpAddress),
-    ])];
+    // Add new members to existing board via inbox IDs
+    const { getInboxIdForIdentifier } = await import('@xmtp/node-sdk');
+    const board = await (async () => {
+      const client = agent.client || agent;
+      await client.conversations.syncAll();
+      const convos = await client.conversations.list();
+      return convos.find(c => c.id === config.board?.id);
+    })();
 
-    // Create new board with all members
-    const newBoard = await agent.createGroupWithAddresses(allMembers, {
-      name: 'Agent Swarm — Main Board',
-      description: 'The main agent marketplace board. Post tasks, find work, get paid in USDC.',
-    });
-
-    console.log(`New XMTP board: ${newBoard.id}`);
-    console.log(`Members: ${allMembers.length + 1} (including owner)`);
-
-    // Update config with new board ID
-    config.board = config.board || {};
-    config.board.id = newBoard.id;
-    writeFileSync(configPath, JSON.stringify(config, null, 2));
-    console.log(`Config updated with new board ID`);
-
-    // Update state
-    state.members = allMembers;
+    if (!board) {
+      console.error('Board not found. Creating new one...');
+      const allMembers = [...new Set([...state.members, ...newRequests.map(r => r.xmtpAddress)])];
+      const newBoard = await agent.createGroupWithAddresses(allMembers, {
+        name: 'Agent Swarm — Main Board',
+        description: 'The main agent marketplace board. Post tasks, find work, get paid in USDC.',
+      });
+      config.board = config.board || {};
+      config.board.id = newBoard.id;
+      writeFileSync(configPath, JSON.stringify(config, null, 2));
+      console.log(`New board created: ${newBoard.id}`);
+      state.members = allMembers;
+    } else {
+      for (const req of newRequests) {
+        try {
+          const inboxId = await getInboxIdForIdentifier({ identifier: req.xmtpAddress, identifierKind: 0 }, 'production');
+          if (!inboxId) { console.log(`  Could not resolve ${req.xmtpAddress}`); continue; }
+          await board.addMembers([inboxId]);
+          console.log(`  Added ${req.xmtpAddress} (inbox: ${inboxId.slice(0,12)}...)`);
+          state.members.push(req.xmtpAddress);
+        } catch (err) {
+          console.log(`  Failed to add ${req.xmtpAddress}: ${err.message?.slice(0,80)}`);
+        }
+      }
+      console.log(`Board ${config.board.id} updated — no ID change.`);
+    }
 
     await agent.stop();
   } else {

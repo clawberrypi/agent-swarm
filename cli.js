@@ -552,44 +552,30 @@ const commands = {
 
       // Add to XMTP group — XMTP's addMembers has a hex bug,
       // so we recreate the board with all current + new members
+      // Add to XMTP group using inbox ID (addMembers with addresses has a hex bug)
       if (config.board?.id) {
         console.log(`Adding ${xmtpAddress} to XMTP board...`);
         try {
           const { agent: xmtpAgent } = await getAgent(config);
-          const oldBoard = await getBoard(xmtpAgent, config);
+          const board = await getBoard(xmtpAgent, config);
 
-          // Get current members
-          const members = await oldBoard.members();
-          const { ethers } = await import('ethers');
-          const myAddr = new ethers.Wallet(config.wallet.privateKey).address.toLowerCase();
-          const memberAddrs = members
-            .map(m => m.addresses?.[0]?.address || m.accountAddress)
-            .filter(Boolean)
-            .filter(a => a.toLowerCase() !== myAddr);
-
-          // Add the new member
-          if (!memberAddrs.find(a => a.toLowerCase() === xmtpAddress.toLowerCase())) {
-            memberAddrs.push(xmtpAddress);
+          // Resolve address → inbox ID
+          const { getInboxIdForIdentifier } = await import('@xmtp/node-sdk');
+          const inboxId = await getInboxIdForIdentifier({ identifier: xmtpAddress, identifierKind: 0 }, 'production');
+          if (!inboxId) {
+            throw new Error(`Could not resolve inbox ID for ${xmtpAddress}. Agent may not be registered on XMTP.`);
           }
+          console.log(`Resolved inbox ID: ${inboxId}`);
 
-          // Create new board with all members
-          const newBoard = await xmtpAgent.createGroupWithAddresses(memberAddrs, {
-            name: config.board?.name || 'Agent Swarm Board',
-            description: 'Public task board for agent discovery',
-          });
-
-          // Update config with new board ID
-          config.board.id = newBoard.id;
-          writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-          console.log(`New XMTP board created: ${newBoard.id}`);
-          console.log(`Members: ${memberAddrs.join(', ')}`);
-          console.log('Config updated with new board ID.');
-          console.log('⚠️  Workers on the old board need to run: node cli.js board connect --id ' + newBoard.id);
+          // addMembers takes inbox IDs (not addresses)
+          await board.addMembers([inboxId]);
+          console.log(`Added ${xmtpAddress} to board ${config.board.id}`);
+          console.log('Board ID unchanged — no reconnection needed.');
 
           await xmtpAgent.stop();
         } catch (err) {
           console.log(`Could not add to XMTP group: ${err.message}`);
-          console.log(`Create a new board with this member: node cli.js board create --members ${xmtpAddress}`);
+          console.log(`Fallback: create a new board with: node cli.js board create --members ${xmtpAddress}`);
         }
       }
     },
