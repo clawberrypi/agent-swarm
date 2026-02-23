@@ -5,20 +5,24 @@ const ESCROW_ABI = [
   'function createEscrow(bytes32 taskId, address worker, uint256 amount, uint256 deadline) external',
   'function releaseEscrow(bytes32 taskId) external',
   'function dispute(bytes32 taskId) external',
+  'function resolveDispute(bytes32 taskId, bool releaseToWorker) external',
+  'function claimDisputeTimeout(bytes32 taskId) external',
   'function autoRelease(bytes32 taskId) external',
   'function refund(bytes32 taskId) external',
   'function escrows(bytes32) view returns (address requestor, address worker, uint256 amount, uint256 deadline, uint8 status)',
+  'function disputeTimestamps(bytes32) view returns (uint256)',
+  'function disputeTimeout() view returns (uint256)',
+  'function arbitrator() view returns (address)',
   'function usdc() view returns (address)',
 ];
 
 const USDC_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
-  'function allowance(address owner, address spender) view returns (uint256)',
   'function decimals() view returns (uint8)',
 ];
 
 // Default deployed TaskEscrow on Base mainnet
-const DEFAULT_ESCROW_ADDRESS = '0xe924B7ED0Bda332493607d2106326B5a33F7970f';
+const DEFAULT_ESCROW_ADDRESS = '0x59885D69e3458bD73369322ad558272049F224ec';
 
 // Compiled bytecode: loaded from build/ if deploying a new instance
 const ESCROW_BYTECODE = null; // Set after compiling contracts/Escrow.sol
@@ -68,20 +72,12 @@ export async function createEscrow(wallet, contractAddr, { taskId, worker, amoun
   const amountRaw = ethers.parseUnits(amount.toString(), decimals);
   const taskIdHash = hashTaskId(taskId);
 
-  // Reset allowance to 0 first (USDC requires this), then approve
-  const currentAllowance = await usdc.allowance(wallet.address, contractAddr);
-  if (currentAllowance > 0n) {
-    const resetTx = await usdc.approve(contractAddr, 0);
-    await resetTx.wait();
-  }
+  // Approve escrow contract to spend USDC
   const approveTx = await usdc.approve(contractAddr, amountRaw);
-  await approveTx.wait(1); // wait for 1 block confirmation
+  await approveTx.wait();
 
-  // Small delay to let RPC state propagate (Base RPC caching)
-  await new Promise(r => setTimeout(r, 3000));
-
-  // Create the escrow — use manual gas limit to avoid stale estimateGas
-  const tx = await escrow.createEscrow(taskIdHash, worker, amountRaw, deadline, { gasLimit: 200000n });
+  // Create the escrow
+  const tx = await escrow.createEscrow(taskIdHash, worker, amountRaw, deadline);
   await tx.wait();
 
   return { txHash: tx.hash, taskIdHash };
@@ -122,6 +118,33 @@ export async function disputeEscrow(wallet, contractAddr, taskId) {
 export async function autoRelease(wallet, contractAddr, taskId) {
   const escrow = new ethers.Contract(contractAddr, ESCROW_ABI, wallet);
   const tx = await escrow.autoRelease(hashTaskId(taskId));
+  await tx.wait();
+  return { txHash: tx.hash };
+}
+
+/**
+ * Resolve a dispute (arbitrator only). Sends funds to worker or requestor.
+ * @param {ethers.Wallet} wallet - Arbitrator wallet
+ * @param {string} contractAddr - TaskEscrow address
+ * @param {string} taskId - Task ID string
+ * @param {boolean} releaseToWorker - true = pay worker, false = refund requestor
+ */
+export async function resolveDispute(wallet, contractAddr, taskId, releaseToWorker) {
+  const escrow = new ethers.Contract(contractAddr, ESCROW_ABI, wallet);
+  const tx = await escrow.resolveDispute(hashTaskId(taskId), releaseToWorker);
+  await tx.wait();
+  return { txHash: tx.hash };
+}
+
+/**
+ * Claim refund after dispute timeout expires (anyone can call, funds go to requestor).
+ * @param {ethers.Wallet} wallet - Any wallet
+ * @param {string} contractAddr - TaskEscrow address
+ * @param {string} taskId - Task ID string
+ */
+export async function claimDisputeTimeout(wallet, contractAddr, taskId) {
+  const escrow = new ethers.Contract(contractAddr, ESCROW_ABI, wallet);
+  const tx = await escrow.claimDisputeTimeout(hashTaskId(taskId));
   await tx.wait();
   return { txHash: tx.hash };
 }
