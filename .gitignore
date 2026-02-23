@@ -6,3 +6,5 @@ swarm.config.json
 .xmtp-*
 .board-watcher-state.json
 *credentials*
+requestor.config.json
+tasks.json
