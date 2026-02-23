@@ -19,13 +19,17 @@ function loadState() {
       escrows: [],
       reputation: [],
       activity: [],
-      stats: { totalTasks: 0, totalPaid: 0, totalClaims: 0, totalResults: 0 }
+      stats: { totalTasks: 0, totalPaid: 0, totalClaims: 0, totalResults: 0, totalListings: 0, totalBids: 0, totalEscrows: 0, totalDisputes: 0 }
     };
   }
   const state = JSON.parse(readFileSync(STATE_FILE, 'utf-8'));
   if (!state.listings) state.listings = [];
   if (!state.escrows) state.escrows = [];
   if (!state.reputation) state.reputation = [];
+  if (!state.stats.totalListings) state.stats.totalListings = 0;
+  if (!state.stats.totalBids) state.stats.totalBids = 0;
+  if (!state.stats.totalEscrows) state.stats.totalEscrows = 0;
+  if (!state.stats.totalDisputes) state.stats.totalDisputes = 0;
   return state;
 }
 
@@ -132,6 +136,7 @@ export function logPayment(taskId, worker, amount, txHash) {
 
 export function logListing(listing) {
   const state = loadState();
+  state.stats.totalListings++;
   state.listings.push({
     taskId: listing.taskId,
     title: listing.title,
@@ -156,6 +161,7 @@ export function logListing(listing) {
 
 export function logEscrow(escrow) {
   const state = loadState();
+  state.stats.totalEscrows++;
   state.escrows.push({
     taskId: escrow.taskId,
     requestor: escrow.requestor,
@@ -207,42 +213,6 @@ export function logReputation(rep) {
     type: 'reputation_updated',
     agent: rep.address,
     trustScore: rep.trustScore,
-    at: new Date().toISOString()
-  });
-  if (state.activity.length > 50) state.activity = state.activity.slice(-50);
-  saveState(state);
-}
-
-export function logProgress(taskId, worker, percent, status) {
-  const state = loadState();
-  const task = state.tasks.find(t => t.id === taskId);
-  if (task) {
-    task.progress = percent;
-    task.progressStatus = status || 'working';
-  }
-  state.activity.push({
-    type: 'progress_update',
-    agent: worker,
-    taskId,
-    percent,
-    status: status || 'working',
-    at: new Date().toISOString()
-  });
-  if (state.activity.length > 50) state.activity = state.activity.slice(-50);
-  saveState(state);
-}
-
-export function logCancel(taskId, sender, reason) {
-  const state = loadState();
-  const task = state.tasks.find(t => t.id === taskId);
-  if (task) task.status = 'cancelled';
-  const escrow = state.escrows.find(e => e.taskId === taskId);
-  if (escrow) escrow.status = 'refunded';
-  state.activity.push({
-    type: 'task_cancelled',
-    agent: sender,
-    taskId,
-    reason: reason || null,
     at: new Date().toISOString()
   });
   if (state.activity.length > 50) state.activity = state.activity.slice(-50);

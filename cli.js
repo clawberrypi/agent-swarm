@@ -10,6 +10,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, 'swarm.config.json');
 const TASK_LOG_PATH = join(__dirname, 'tasks.json');
 
+// ─── Dashboard State ───
+import * as dashState from './src/state.js';
+
 // ─── Config ───
 
 function loadConfig() {
@@ -262,6 +265,10 @@ const commands = {
       console.log(`  Title: ${flags.title}`);
       console.log(`  Budget: $${flags.budget} USDC`);
 
+      // Log to dashboard
+      dashState.registerAgent(address, 'requestor');
+      dashState.logListing({ taskId, title: flags.title, description: flags.description || '', budget: flags.budget, skills_needed: skills, requestor: address });
+
       // Save to task log
       const log = loadTaskLog();
       log.tasks[taskId] = {
@@ -382,7 +389,12 @@ const commands = {
         taskIdHash,
       });
 
-      // 5. Update local log
+      // 5. Update dashboard + local log
+      dashState.registerAgent(address, 'requestor');
+      dashState.registerAgent(workerAddr, 'worker');
+      dashState.logEscrow({ taskId, requestor: address, worker: workerAddr, amount, deadline, txHash });
+      dashState.logTask({ id: taskId, title: task.title, budget: amount, subtasks: [{ id: `${taskId}-s1` }] }, address);
+
       task.status = 'in-progress';
       task.worker = workerAddr;
       task.groupId = group.id;
@@ -504,10 +516,12 @@ const commands = {
       const { txHash } = await releaseEscrow(wallet, escrowAddr, flags['task-id']);
       console.log(`Released: ${txHash}`);
 
-      // Notify via XMTP if we have a group
+      // Update dashboard + local log
+      dashState.updateEscrow(flags['task-id'], 'released', txHash);
       const log = loadTaskLog();
       const task = log.tasks[flags['task-id']];
       if (task) {
+        dashState.logPayment(flags['task-id'], task.worker, task.budget, txHash);
         task.status = 'paid';
         task.releaseTx = txHash;
         saveTaskLog(log);
@@ -637,6 +651,7 @@ const commands = {
                   skills: matches,
                 };
                 await board.send(encodeText(JSON.stringify(bid)));
+                dashState.registerAgent(address, 'worker');
                 console.log(`  → Auto-bid: $${bidPrice.toFixed(2)}\n`);
               } else {
                 console.log(`  → Waiting for manual bid (run: node cli.js board bid --task-id ${parsed.taskId} --price ${bidPrice.toFixed(2)})\n`);
@@ -668,13 +683,17 @@ const commands = {
                       } catch { return false; }
                     });
                     if (hasTask) {
+                      const subtaskId = parsed.subtasks?.[0]?.id || `${parsed.id}-s1`;
                       await sendProtocolMessage(c, {
                         type: 'result',
                         taskId: parsed.id,
-                        subtaskId: parsed.subtasks?.[0]?.id || `${parsed.id}-s1`,
+                        subtaskId,
                         worker: address,
                         result,
                       });
+                      dashState.registerAgent(address, 'worker');
+                      dashState.logClaim(parsed.id, subtaskId, address);
+                      dashState.logResult(parsed.id, subtaskId, address);
                       console.log(`  → Result submitted to group ${c.id}\n`);
                       break;
                     }
@@ -710,13 +729,17 @@ const commands = {
                   const { execute } = await import('./src/executor.js');
                   const result = await execute(parsed, config);
                   const { sendProtocolMessage } = await import('./src/agent.js');
+                  const subId = parsed.subtasks?.[0]?.id || `${parsed.id}-s1`;
                   await sendProtocolMessage(c, {
                     type: 'result',
                     taskId: parsed.id,
-                    subtaskId: parsed.subtasks?.[0]?.id || `${parsed.id}-s1`,
+                    subtaskId: subId,
                     worker: address,
                     result,
                   });
+                  dashState.registerAgent(address, 'worker');
+                  dashState.logClaim(parsed.id, subId, address);
+                  dashState.logResult(parsed.id, subId, address);
                   console.log(`  → Result submitted\n`);
                 }
               } catch {}
