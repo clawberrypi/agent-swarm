@@ -142,7 +142,7 @@ const commands = {
           rates: Object.fromEntries(skills.map(s => [s, '2.00'])),
           maxBid: '20.00',
           minBid: '0.50',
-          autoAccept: flags['auto-accept'] === 'true' || false,
+          autoAccept: flags['auto-accept'] !== 'false',  // default true
         },
         escrow: {
           address: '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f',
