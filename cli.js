@@ -159,19 +159,56 @@ const commands = {
       writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
       console.log(`Config written to ${CONFIG_PATH}`);
 
-      // Register on XMTP
-      console.log('\nRegistering on XMTP...');
+      // Register on XMTP (reuse existing db if available)
       const { createSwarmAgent } = await import('./src/agent.js');
       const dbName = `.xmtp-${wallet.address.slice(2, 10).toLowerCase()}`;
+      const dbPath = join(__dirname, dbName);
       config.xmtp.dbPath = dbName;
       writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 
-      const { agent, address } = await createSwarmAgent(privateKey, {
-        env: 'production',
-        dbPath: join(__dirname, dbName),
-      });
-      await agent.start();
-      console.log(`Registered on XMTP: ${address}`);
+      let agent, address;
+      if (existsSync(dbPath)) {
+        console.log(`\nReusing existing XMTP registration: ${dbName}`);
+        try {
+          ({ agent, address } = await createSwarmAgent(privateKey, {
+            env: 'production',
+            dbPath,
+          }));
+          await agent.start();
+          console.log(`XMTP agent: ${address}`);
+        } catch (err) {
+          if (err.message?.includes('installation')) {
+            console.error('\nXMTP installation limit reached.');
+            console.error('Your existing database may be invalid. To fix:');
+            console.error(`  1. Delete ${dbName} and revoke old installations via XMTP`);
+            console.error('  2. Or use a new wallet: node cli.js setup init');
+            process.exit(1);
+          }
+          throw err;
+        }
+      } else {
+        console.log('\nRegistering on XMTP (first time)...');
+        try {
+          ({ agent, address } = await createSwarmAgent(privateKey, {
+            env: 'production',
+            dbPath,
+          }));
+          await agent.start();
+          console.log(`XMTP agent: ${address}`);
+          console.log('⚠️  Your XMTP database is at: ' + dbName);
+          console.log('   Do NOT delete this file — it counts toward your installation limit.');
+        } catch (err) {
+          if (err.message?.includes('installation')) {
+            console.error('\nXMTP installation limit reached for this wallet.');
+            console.error('This wallet has registered too many XMTP installations.');
+            console.error('Options:');
+            console.error('  1. Use a different wallet');
+            console.error('  2. Revoke old installations (requires access to an existing db)');
+            process.exit(1);
+          }
+          throw err;
+        }
+      }
 
       // Create or join board
       if (flags['board-id']) {
@@ -513,18 +550,46 @@ const commands = {
       const { txHash } = await approveJoinRequest(wallet, boardId, index);
       console.log(`Approved on-chain: ${txHash}`);
 
-      // Add to XMTP group
+      // Add to XMTP group — XMTP's addMembers has a hex bug,
+      // so we recreate the board with all current + new members
       if (config.board?.id) {
         console.log(`Adding ${xmtpAddress} to XMTP board...`);
         try {
           const { agent: xmtpAgent } = await getAgent(config);
-          const board = await getBoard(xmtpAgent, config);
-          await board.addMembers([xmtpAddress]);
-          console.log('Added to XMTP group.');
+          const oldBoard = await getBoard(xmtpAgent, config);
+
+          // Get current members
+          const members = await oldBoard.members();
+          const { ethers } = await import('ethers');
+          const myAddr = new ethers.Wallet(config.wallet.privateKey).address.toLowerCase();
+          const memberAddrs = members
+            .map(m => m.addresses?.[0]?.address || m.accountAddress)
+            .filter(Boolean)
+            .filter(a => a.toLowerCase() !== myAddr);
+
+          // Add the new member
+          if (!memberAddrs.find(a => a.toLowerCase() === xmtpAddress.toLowerCase())) {
+            memberAddrs.push(xmtpAddress);
+          }
+
+          // Create new board with all members
+          const newBoard = await xmtpAgent.createGroupWithAddresses(memberAddrs, {
+            name: config.board?.name || 'Agent Swarm Board',
+            description: 'Public task board for agent discovery',
+          });
+
+          // Update config with new board ID
+          config.board.id = newBoard.id;
+          writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+          console.log(`New XMTP board created: ${newBoard.id}`);
+          console.log(`Members: ${memberAddrs.join(', ')}`);
+          console.log('Config updated with new board ID.');
+          console.log('⚠️  Workers on the old board need to run: node cli.js board connect --id ' + newBoard.id);
+
           await xmtpAgent.stop();
         } catch (err) {
-          console.log(`Could not auto-add to XMTP group: ${err.message}`);
-          console.log(`Manually add ${xmtpAddress} to group ${config.board.id}`);
+          console.log(`Could not add to XMTP group: ${err.message}`);
+          console.log(`Create a new board with this member: node cli.js board create --members ${xmtpAddress}`);
         }
       }
     },
