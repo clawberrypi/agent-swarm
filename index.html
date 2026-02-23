@@ -154,6 +154,7 @@ const REGISTRY_ABI = [
   'function listBoards(uint256 offset, uint256 limit) view returns (bytes32[] ids, uint256 total)',
   'function getBoard(bytes32 boardId) view returns (address owner, string xmtpGroupId, string name, string description, string[] skills, uint256 memberCount, uint256 createdAt, bool active)',
   'function getJoinRequestCount(bytes32 boardId) view returns (uint256)',
+  'function getJoinRequest(bytes32 boardId, uint256 index) view returns (address agent, string xmtpAddress, string[] skills, uint256 requestedAt, bool approved, bool rejected)',
 ];
 
 const ESCROW_ABI = [
@@ -191,8 +192,13 @@ async function loadBoards(provider) {
   for (const id of ids) {
     const [owner, xmtpGroupId, name, description, skills, memberCount, createdAt, active] = await registry.getBoard(id);
     if (active) {
-      const requests = Number(await registry.getJoinRequestCount(id));
-      boards.push({ id, owner, name, description, skills, memberCount: Number(memberCount), createdAt: Number(createdAt), requests });
+      const totalRequests = Number(await registry.getJoinRequestCount(id));
+      let pendingRequests = 0;
+      for (let j = 0; j < totalRequests; j++) {
+        const [,,,, approved, rejected] = await registry.getJoinRequest(id, j);
+        if (!approved && !rejected) pendingRequests++;
+      }
+      boards.push({ id, owner, name, description, skills, memberCount: Number(memberCount), createdAt: Number(createdAt), requests: pendingRequests });
       totalAgents += Number(memberCount);
     }
   }
