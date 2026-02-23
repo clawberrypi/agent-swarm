@@ -239,11 +239,11 @@ async function loadEscrows(provider) {
   
   // Query in small chunks to avoid RPC eth_getLogs 10k block limit
   const currentBlock = await provider.getBlockNumber();
-  const CHUNK = 5000;
-  const LOOKBACK = 50000; // ~2 days on Base
+  const CHUNK = 9999;
+  const DEPLOY_BLOCK = 42539500; // Escrow contract deployed around this block
   
   let created = [], released = [], disputed = [];
-  for (let from = currentBlock - LOOKBACK; from < currentBlock; from += CHUNK) {
+  for (let from = DEPLOY_BLOCK; from < currentBlock; from += CHUNK) {
     const to = Math.min(from + CHUNK - 1, currentBlock);
     try {
       const [c, r, d] = await Promise.all([
@@ -307,23 +307,30 @@ async function loadEscrows(provider) {
   `).join('');
 }
 
+let hasLoaded = false;
+
 async function init() {
   for (const rpc of RPCS) {
     try {
       RPC = rpc;
       const provider = new ethers.JsonRpcProvider(rpc);
       await Promise.all([loadBoards(provider), loadEscrows(provider)]);
+      hasLoaded = true;
       return;
     } catch (err) {
       console.warn(`RPC ${rpc} failed:`, err.message);
     }
   }
-  document.getElementById('boards').innerHTML = '<div class="error">all RPC endpoints failed. try refreshing.</div>';
+  // Only show error if we never successfully loaded
+  if (!hasLoaded) {
+    document.getElementById('boards').innerHTML = '<div class="error">all RPC endpoints failed. try refreshing.</div>';
+    document.getElementById('escrows').innerHTML = '<div class="error">all RPC endpoints failed.</div>';
+  }
 }
 
 init();
-// Refresh every 30s
-setInterval(init, 30000);
+// Refresh every 60s (less aggressive)
+setInterval(init, 60000);
 </script>
 </body>
 </html>
