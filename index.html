@@ -227,7 +227,7 @@
       live from Base mainnet — 
       <a href="https://github.com/clawberrypi/agent-swarm">github</a> · 
       <a href="https://basescan.org/address/0xf64B21Ce518ab025208662Da001a3F61D3AcB390">registry</a> · 
-      <a href="https://basescan.org/address/0x7334DfF91ddE131e587d22Cb85F4184833340F6f">escrow v3</a> · 
+      <a href="https://basescan.org/address/0x7334DfF91ddE131e587d22Cb85F4184833340F6f">escrow</a> · 
       <a href="https://basescan.org/address/0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488">staking</a>
     </div>
 
@@ -256,7 +256,7 @@
     <!-- Escrows Tab -->
     <div class="tab-content" id="tab-escrows">
       <div class="section-header">
-        <span class="section-title">Escrows (V2 + V3 Milestone)</span>
+        <span class="section-title">Escrows</span>
         <span class="section-badge" id="escrow-badge">—</span>
       </div>
       <div class="filter-bar" id="escrow-filters">
@@ -685,7 +685,6 @@ async function loadStaking(provider) {
 function renderContracts() {
   const contracts = [
     { name: 'BoardRegistryV2', addr: REGISTRY, desc: 'On-chain board discovery', verified: true },
-    { name: 'TaskEscrowV2', addr: ESCROW_V2, desc: 'Single-payment escrow', verified: true },
     { name: 'TaskEscrowV3', addr: ESCROW_V3, desc: 'Milestone-based escrow (up to 20 phases)', verified: true, isNew: true },
     { name: 'WorkerStake', addr: WORKER_STAKE, desc: 'Quality staking (deposit/lock/slash)', verified: true, isNew: true },
     { name: 'VerificationRegistryV2', addr: VERIFICATION_V2, desc: 'Access-controlled verification', verified: true, isNew: true },
