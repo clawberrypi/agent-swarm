@@ -1352,6 +1352,101 @@ const commands = {
       }
     },
   },
+
+  wallet: {
+    async 'guard-status'(config, flags) {
+      const { guardWallet, printGuardStatus } = await import('./src/wallet-guard.js');
+      const wallet = await getWallet(config);
+      const guarded = guardWallet(wallet, { workdir: dirname(CONFIG_PATH) });
+      printGuardStatus(guarded);
+    },
+
+    async 'guard-init'(config, flags) {
+      const { initGuardConfig } = await import('./src/wallet-guard.js');
+      const overrides = {};
+      if (flags['max-tx']) overrides.maxPerTransaction = flags['max-tx'];
+      if (flags['max-daily']) overrides.maxDailySpend = flags['max-daily'];
+      if (flags.mode) overrides.mode = flags.mode;
+      if (flags['max-hourly']) overrides.maxTransactionsPerHour = parseInt(flags['max-hourly']);
+
+      const workdir = dirname(CONFIG_PATH);
+      const guard = initGuardConfig(workdir, overrides);
+      console.log('Wallet guard initialized:');
+      console.log(`  Mode: ${guard.mode}`);
+      console.log(`  Per-tx limit: ${guard.maxPerTransaction} USDC`);
+      console.log(`  Daily limit: ${guard.maxDailySpend} USDC`);
+      console.log(`  Hourly tx limit: ${guard.maxTransactionsPerHour}`);
+      console.log(`  Config saved to: ${join(workdir, '.wallet-guard.json')}`);
+    },
+
+    async 'guard-allow'(config, flags) {
+      const { guardWallet } = await import('./src/wallet-guard.js');
+      const address = flags.address;
+      if (!address) { console.error('--address required'); process.exit(1); }
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) { console.error('Invalid address format'); process.exit(1); }
+
+      const wallet = await getWallet(config);
+      const guarded = guardWallet(wallet, { workdir: dirname(CONFIG_PATH) });
+      const current = guarded.guard.allowedAddresses || [];
+      if (!current.map(a => a.toLowerCase()).includes(address.toLowerCase())) {
+        current.push(address);
+        guarded.updateConfig({ allowedAddresses: current });
+        console.log(`Added ${address} to allowlist (${current.length} total)`);
+      } else {
+        console.log(`${address} already in allowlist`);
+      }
+    },
+
+    async 'guard-set'(config, flags) {
+      const { guardWallet } = await import('./src/wallet-guard.js');
+      const wallet = await getWallet(config);
+      const guarded = guardWallet(wallet, { workdir: dirname(CONFIG_PATH) });
+
+      const updates = {};
+      if (flags['max-tx']) updates.maxPerTransaction = flags['max-tx'];
+      if (flags['max-daily']) updates.maxDailySpend = flags['max-daily'];
+      if (flags['max-hourly']) updates.maxTransactionsPerHour = parseInt(flags['max-hourly']);
+      if (flags.mode) {
+        if (!['full', 'readOnly', 'spendOnly'].includes(flags.mode)) {
+          console.error('Mode must be: full, readOnly, or spendOnly');
+          process.exit(1);
+        }
+        updates.mode = flags.mode;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        console.error('No settings to update. Use --max-tx, --max-daily, --max-hourly, or --mode');
+        process.exit(1);
+      }
+
+      guarded.updateConfig(updates);
+      console.log('Guard config updated:', updates);
+    },
+
+    async 'audit-log'(config, flags) {
+      const { readFileSync, existsSync } = await import('fs');
+      const logPath = join(dirname(CONFIG_PATH), '.wallet-audit.log');
+      if (!existsSync(logPath)) {
+        console.log('No audit log yet. Transactions will be logged after guard is initialized.');
+        return;
+      }
+
+      const lines = readFileSync(logPath, 'utf8').trim().split('\n');
+      const limit = parseInt(flags.limit) || 20;
+      const recent = lines.slice(-limit);
+      console.log(`Last ${recent.length} audit entries:\n`);
+      for (const line of recent) {
+        try {
+          const entry = JSON.parse(line);
+          const time = entry.timestamp?.slice(11, 19) || '??:??:??';
+          const status = entry.status === 'blocked' ? '❌' : entry.status === 'confirmed' ? '✅' : '⏳';
+          console.log(`  ${time} ${status} ${entry.action || '?'} → ${entry.to?.slice(0, 10) || entry.spender?.slice(0, 10) || '?'}... ${entry.usdcAmount ? entry.usdcAmount + ' USDC' : ''} ${entry.reason || ''}`);
+        } catch {
+          // skip malformed
+        }
+      }
+    },
+  },
 };
 
 // ─── Main ───
@@ -1410,6 +1505,14 @@ Commands:
   worker stake --amount <usdc>    Deposit USDC stake (quality assurance)
   worker unstake --amount <usdc>  Withdraw available stake
   worker stake-status             Check your stake balance
+
+  wallet guard-status             Show wallet guard config and spending
+  wallet guard-init [--max-tx <usdc>] [--max-daily <usdc>] [--mode <full|readOnly|spendOnly>]
+                                  Initialize wallet guard with spending limits
+  wallet guard-allow --address <addr>  Add address to allowlist
+  wallet guard-set --max-tx <usdc> [--max-daily <usdc>] [--max-hourly <n>] [--mode <mode>]
+                                  Update wallet guard settings
+  wallet audit-log [--limit <n>]  Show recent transaction audit log
   `);
   process.exit(0);
 }

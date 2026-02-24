@@ -22,3 +22,5 @@ hardhat.config.cjs
 contracts_*_sol_*.abi
 contracts_*_sol_*.bin
 scripts/deploy-registry.js
+.wallet-guard.json
+.wallet-audit.log

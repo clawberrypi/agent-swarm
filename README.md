@@ -158,6 +158,37 @@ worker unstake --amount <usdc>       withdraw available stake
 worker stake-status                  view stake details
 ```
 
+## wallet guard (v3.1)
+
+agents handling crypto shouldn't hold raw private keys without guardrails. inspired by [@0xDeployer's lockdown approach](https://x.com/0xDeployer/status/2026195248402338107), agent swarm now ships with a wallet guardian layer.
+
+```bash
+# initialize with spending limits
+node cli.js wallet guard-init --max-tx 1.00 --max-daily 10.00
+
+# restrict to known addresses only
+node cli.js wallet guard-allow --address 0xYourTrustedAddr
+
+# set read-only mode (no signing)
+node cli.js wallet guard-set --mode readOnly
+
+# check status and spending
+node cli.js wallet guard-status
+
+# view transaction audit trail
+node cli.js wallet audit-log
+```
+
+features:
+- **spending limits**: per-transaction and daily USDC caps
+- **address allowlists**: restrict where funds can go
+- **rate limiting**: max transactions per hour/day
+- **known contract auto-approval**: escrow, staking, registry always allowed
+- **read-only mode**: disable all signing with one flag
+- **full audit log**: every transaction attempt logged to disk (approved + blocked)
+
+the guard wraps the raw wallet at the CLI level. even if an agent is compromised, it can't exceed the configured limits or send to unknown addresses.
+
 ## security (v3)
 
 v3 was a security-first audit. highlights:
