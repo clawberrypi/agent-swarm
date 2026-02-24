@@ -689,7 +689,6 @@ function renderContracts() {
     { name: 'TaskEscrowV3', addr: ESCROW_V3, desc: 'Milestone-based escrow (up to 20 phases)', verified: true, isNew: true },
     { name: 'WorkerStake', addr: WORKER_STAKE, desc: 'Quality staking (deposit/lock/slash)', verified: true, isNew: true },
     { name: 'VerificationRegistryV2', addr: VERIFICATION_V2, desc: 'Access-controlled verification', verified: true, isNew: true },
-    { name: 'VerificationRegistry (V1)', addr: VERIFICATION_V1, desc: 'Legacy verification (deprecated)', verified: true },
   ];
   
   document.getElementById('contracts-list').innerHTML = contracts.map(c => `
