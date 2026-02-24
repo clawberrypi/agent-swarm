@@ -1,6 +1,24 @@
 // reputation.js — On-chain reputation derived from escrow history
 // No reviews, no stars, no subjective ratings. Just math from the chain.
+// PERFORMANCE: Caches last-scanned block per address to avoid re-scanning full history
 import { ethers } from 'ethers';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const CACHE_FILE = join(__dirname, '..', '.reputation-cache.json');
+
+function loadCache() {
+  try {
+    if (existsSync(CACHE_FILE)) return JSON.parse(readFileSync(CACHE_FILE, 'utf-8'));
+  } catch {}
+  return {};
+}
+
+function saveCache(cache) {
+  try { writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2)); } catch {}
+}
 
 const ESCROW_ABI = [
   'event EscrowCreated(bytes32 indexed taskId, address requestor, address worker, uint256 amount, uint256 deadline)',
@@ -26,14 +44,32 @@ const DEFAULT_FROM_BLOCK = 42490000;
 export async function buildReputation(provider, escrowAddress, agentAddress, fromBlock = DEFAULT_FROM_BLOCK) {
   const contract = new ethers.Contract(escrowAddress, ESCROW_ABI, provider);
   const addr = agentAddress.toLowerCase();
+  const cacheKey = `${escrowAddress}:${addr}`;
+  const cache = loadCache();
 
-  // Fetch events in chunks (Base RPC limits to 10,000 blocks per query)
+  // Use cached start block if available (incremental scanning)
+  const cachedEntry = cache[cacheKey];
+  const effectiveFromBlock = cachedEntry?.lastBlock ? cachedEntry.lastBlock + 1 : fromBlock;
+
   const currentBlock = await provider.getBlockNumber();
+  
+  // If we're up to date, return cached result
+  if (cachedEntry?.result && effectiveFromBlock >= currentBlock) {
+    return cachedEntry.result;
+  }
+
   const CHUNK = 9999;
 
-  async function queryInChunks(eventName) {
+  async function queryInChunks(eventName, startFrom = fromBlock) {
     const allEvents = [];
-    for (let start = fromBlock; start <= currentBlock; start += CHUNK) {
+    // Merge with cached events if available
+    if (cachedEntry?.events?.[eventName]) {
+      allEvents.push(...cachedEntry.events[eventName].map(e => ({
+        args: e.args,
+        blockNumber: e.blockNumber,
+      })));
+    }
+    for (let start = startFrom; start <= currentBlock; start += CHUNK) {
       const end = Math.min(start + CHUNK - 1, currentBlock);
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
@@ -50,10 +86,10 @@ export async function buildReputation(provider, escrowAddress, agentAddress, fro
   }
 
   const [created, released, disputed, refunded] = await Promise.all([
-    queryInChunks('EscrowCreated'),
-    queryInChunks('EscrowReleased'),
-    queryInChunks('EscrowDisputed'),
-    queryInChunks('EscrowRefunded'),
+    queryInChunks('EscrowCreated', effectiveFromBlock),
+    queryInChunks('EscrowReleased', effectiveFromBlock),
+    queryInChunks('EscrowDisputed', effectiveFromBlock),
+    queryInChunks('EscrowRefunded', effectiveFromBlock),
   ]);
 
   // Build a map of taskId -> event data
@@ -110,7 +146,7 @@ export async function buildReputation(provider, escrowAddress, agentAddress, fro
   const workerTotal = asWorker.completed + asWorker.disputed + asWorker.refunded;
   const requestorTotal = asRequestor.completed + asRequestor.disputed + asRequestor.refunded;
 
-  return {
+  const result = {
     address: agentAddress,
     worker: {
       jobsCompleted: asWorker.completed,
@@ -132,6 +168,12 @@ export async function buildReputation(provider, escrowAddress, agentAddress, fro
     trustScore: calculateTrustScore(asWorker, asRequestor),
     lastUpdated: new Date().toISOString(),
   };
+
+  // Cache the result and last scanned block
+  cache[cacheKey] = { lastBlock: currentBlock, result };
+  saveCache(cache);
+
+  return result;
 }
 
 /**

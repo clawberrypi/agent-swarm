@@ -960,6 +960,76 @@ const commands = {
       const { txHash } = await claimDisputeTimeout(wallet, escrowAddr, flags['task-id']);
       console.log(`Refunded: ${txHash}`);
     },
+
+    // ─── Milestone Escrow Commands ───
+
+    async 'create-milestone'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      if (!flags.worker) { console.error('--worker required'); process.exit(1); }
+      if (!flags.milestones) { console.error('--milestones required (e.g. "1.00:24h,2.00:48h")'); process.exit(1); }
+
+      const milestones = flags.milestones.split(',').map(m => {
+        const [amount, deadline] = m.trim().split(':');
+        const hours = parseInt(deadline) || 24;
+        return { amount: parseFloat(amount), deadlineHours: hours };
+      });
+
+      if (milestones.some(m => isNaN(m.amount) || m.amount <= 0)) {
+        console.error('Invalid milestone amounts'); process.exit(1);
+      }
+
+      const { createMilestoneEscrow } = await import('./src/milestone-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.milestoneEscrow?.address;
+      if (!contractAddr) {
+        console.error('TaskEscrowV3 not configured. Add milestoneEscrow.address to config.');
+        process.exit(1);
+      }
+
+      console.log(`Creating milestone escrow: ${milestones.length} milestones, total $${milestones.reduce((s, m) => s + m.amount, 0).toFixed(2)} USDC`);
+      const { txHash, totalAmount } = await createMilestoneEscrow(wallet, contractAddr, {
+        taskId: flags['task-id'],
+        worker: flags.worker,
+        milestones,
+      });
+      console.log(`Created: ${txHash}`);
+      console.log(`Total locked: $${totalAmount} USDC`);
+    },
+
+    async 'release-milestone'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      if (flags.index === undefined) { console.error('--index required'); process.exit(1); }
+
+      const { releaseMilestone } = await import('./src/milestone-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.milestoneEscrow?.address;
+      if (!contractAddr) { console.error('TaskEscrowV3 not configured.'); process.exit(1); }
+
+      console.log(`Releasing milestone ${flags.index}...`);
+      const { txHash } = await releaseMilestone(wallet, contractAddr, flags['task-id'], parseInt(flags.index));
+      console.log(`Released: ${txHash}`);
+    },
+
+    async 'milestone-status'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+
+      const { getMilestoneEscrowStatus } = await import('./src/milestone-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.milestoneEscrow?.address;
+      if (!contractAddr) { console.error('TaskEscrowV3 not configured.'); process.exit(1); }
+
+      const status = await getMilestoneEscrowStatus(wallet, contractAddr, flags['task-id']);
+      if (!status) { console.log('No milestone escrow found for this task.'); return; }
+
+      console.log(`Milestone escrow for ${flags['task-id']}:`);
+      console.log(`  Requestor: ${status.requestor}`);
+      console.log(`  Worker: ${status.worker}`);
+      console.log(`  Total: $${status.totalAmount} USDC`);
+      console.log(`  Released: ${status.releasedCount}/${status.milestoneCount}\n`);
+      for (const m of status.milestones) {
+        console.log(`  [${m.index}] $${m.amount} — ${m.status} — deadline: ${new Date(m.deadline * 1000).toISOString()}`);
+      }
+    },
   },
 
   // ─── Worker Commands ───
@@ -983,8 +1053,39 @@ const commands = {
 
       const { encodeText } = await import('@xmtp/agent-sdk');
       const { MessageType } = await import('./src/protocol.js');
-      const seenMessages = new Set();
-      const seenListings = new Set();
+
+      // ─── Persistent Message Dedup ───
+      // SECURITY: Prevents re-processing tasks after restart
+      const SEEN_FILE = join(__dirname, '.worker-seen.json');
+      let seenData = { messages: [], listings: [] };
+      try {
+        if (existsSync(SEEN_FILE)) {
+          seenData = JSON.parse(readFileSync(SEEN_FILE, 'utf-8'));
+          // Keep only last 1000 entries to prevent unbounded growth
+          if (seenData.messages.length > 1000) seenData.messages = seenData.messages.slice(-1000);
+          if (seenData.listings.length > 500) seenData.listings = seenData.listings.slice(-500);
+        }
+      } catch {}
+      const seenMessages = new Set(seenData.messages || []);
+      const seenListings = new Set(seenData.listings || []);
+
+      function persistSeen() {
+        try {
+          writeFileSync(SEEN_FILE, JSON.stringify({
+            messages: [...seenMessages].slice(-1000),
+            listings: [...seenListings].slice(-500),
+          }));
+        } catch {}
+      }
+      // Save periodically
+      setInterval(persistSeen, 30000);
+
+      // ─── Rate Limiting ───
+      let activeTasks = 0;
+      const MAX_CONCURRENT_TASKS = parseInt(flags['max-tasks'] || '1');
+      let bidCount = 0;
+      const MAX_BIDS_PER_HOUR = parseInt(flags['max-bids'] || '10');
+      setInterval(() => { bidCount = 0; }, 3600000); // reset hourly
 
       const maxBid = parseFloat(config.worker?.maxBid || '20.00');
       const minBid = parseFloat(config.worker?.minBid || '0.50');
@@ -1038,6 +1139,11 @@ const commands = {
               }
 
               if (autoAccept) {
+                // Rate limiting: prevent bid spam
+                if (bidCount >= MAX_BIDS_PER_HOUR) {
+                  console.log(`  → Skipping (bid rate limit: ${MAX_BIDS_PER_HOUR}/hour)\n`);
+                  continue;
+                }
                 const bid = {
                   type: MessageType.BID,
                   taskId: parsed.taskId,
@@ -1047,8 +1153,10 @@ const commands = {
                   skills: matches,
                 };
                 await board.send(encodeText(JSON.stringify(bid)));
+                bidCount++;
                 dashState.registerAgent(address, 'worker');
-                console.log(`  → Auto-bid: $${bidPrice.toFixed(2)}\n`);
+                persistSeen();
+                console.log(`  → Auto-bid: $${bidPrice.toFixed(2)} (${bidCount}/${MAX_BIDS_PER_HOUR} this hour)\n`);
               } else {
                 console.log(`  → Waiting for manual bid (run: node cli.js board bid --task-id ${parsed.taskId} --price ${bidPrice.toFixed(2)})\n`);
               }
@@ -1056,7 +1164,12 @@ const commands = {
 
             // Handle task assignments in private groups
             if (parsed.type === 'task') {
-              console.log(`[TASK RECEIVED] "${parsed.title}"`);
+              if (activeTasks >= MAX_CONCURRENT_TASKS) {
+                console.log(`[TASK RECEIVED] "${parsed.title}" — QUEUED (${activeTasks}/${MAX_CONCURRENT_TASKS} active)`);
+                continue;
+              }
+              activeTasks++;
+              console.log(`[TASK RECEIVED] "${parsed.title}" (${activeTasks}/${MAX_CONCURRENT_TASKS} active)`);
               console.log(`  Executing...`);
               const { execute } = await import('./src/executor.js');
               try {
@@ -1191,6 +1304,53 @@ const commands = {
       // Keep alive
       await new Promise(() => {});
     },
+
+    // ─── Staking Commands ───
+
+    async stake(config, flags) {
+      if (!flags.amount) { console.error('--amount required (USDC)'); process.exit(1); }
+      const { depositStake } = await import('./src/staking.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.staking?.address;
+      if (!contractAddr) {
+        console.error('WorkerStake not configured. Add staking.address to config.');
+        process.exit(1);
+      }
+
+      console.log(`Depositing $${flags.amount} USDC stake...`);
+      const { txHash } = await depositStake(wallet, contractAddr, flags.amount);
+      console.log(`Staked: ${txHash}`);
+      console.log('Your stake signals quality commitment to requestors.');
+    },
+
+    async unstake(config, flags) {
+      if (!flags.amount) { console.error('--amount required (USDC)'); process.exit(1); }
+      const { withdrawStake } = await import('./src/staking.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.staking?.address;
+      if (!contractAddr) { console.error('WorkerStake not configured.'); process.exit(1); }
+
+      console.log(`Withdrawing $${flags.amount} USDC stake...`);
+      const { txHash } = await withdrawStake(wallet, contractAddr, flags.amount);
+      console.log(`Withdrawn: ${txHash}`);
+    },
+
+    async 'stake-status'(config, flags) {
+      const { getStakeStatus } = await import('./src/staking.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.staking?.address;
+      if (!contractAddr) { console.error('WorkerStake not configured.'); process.exit(1); }
+
+      const status = await getStakeStatus(wallet, contractAddr, wallet.address);
+      console.log(`Stake status for ${wallet.address}:`);
+      console.log(`  Total deposited: $${status.totalDeposited} USDC`);
+      console.log(`  Available:       $${status.available} USDC`);
+      console.log(`  Locked (tasks):  $${status.locked} USDC`);
+      console.log(`  Slashed:         $${status.slashed} USDC`);
+      if (status.emergencyWithdrawRequested) {
+        console.log(`  Emergency withdraw requested: ${new Date(status.emergencyWithdrawTime * 1000).toISOString()}`);
+      }
+    },
   },
 };
 
@@ -1239,6 +1399,17 @@ Commands:
   escrow refund --task-id <id>    Refund after deadline
   escrow verify --task-id <id>       Check on-chain verification trail
   escrow claim-timeout --task-id <id>  Claim refund after dispute timeout
+
+  escrow create-milestone --task-id <id> --worker <addr> --milestones "1.00:24h,2.00:48h,1.50:72h"
+                                  Create milestone escrow (amount:deadline pairs)
+  escrow release-milestone --task-id <id> --index <n>
+                                  Release a specific milestone to worker
+  escrow milestone-status --task-id <id>
+                                  Check milestone escrow status
+
+  worker stake --amount <usdc>    Deposit USDC stake (quality assurance)
+  worker unstake --amount <usdc>  Withdraw available stake
+  worker stake-status             Check your stake balance
   `);
   process.exit(0);
 }

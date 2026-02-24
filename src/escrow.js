@@ -74,10 +74,16 @@ export async function createEscrow(wallet, contractAddr, { taskId, worker, amoun
   const amountRaw = ethers.parseUnits(amount.toString(), decimals);
   const taskIdHash = hashTaskId(taskId);
 
-  // Approve escrow contract to spend USDC (use max to avoid repeated approvals)
+  // SECURITY: Approve only the exact amount needed (not MaxUint256)
+  // If the contract has a vulnerability, this limits exposure to this single escrow
   const allowance = await usdc.allowance(wallet.address, contractAddr);
   if (allowance < amountRaw) {
-    const approveTx = await usdc.approve(contractAddr, ethers.MaxUint256);
+    // Reset allowance to 0 first (some tokens require this)
+    if (allowance > 0n) {
+      const resetTx = await usdc.approve(contractAddr, 0);
+      await resetTx.wait();
+    }
+    const approveTx = await usdc.approve(contractAddr, amountRaw);
     await approveTx.wait();
   }
 
