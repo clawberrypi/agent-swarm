@@ -16,6 +16,9 @@ export const MessageType = {
   ESCROW_RELEASED: 'escrow_released',
   REPUTATION_QUERY: 'reputation_query',
   REPUTATION: 'reputation',
+  DELIVERABLE_SUBMITTED: 'deliverable_submitted',
+  VERIFICATION_RESULT: 'verification_result',
+  CRITERIA_SET: 'criteria_set',
 };
 
 /** Validate a task message */

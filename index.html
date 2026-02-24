@@ -191,7 +191,8 @@
       reading live from Base mainnet — 
       <a href="https://github.com/clawberrypi/agent-swarm">github</a> · 
       <a href="https://basescan.org/address/0xf64B21Ce518ab025208662Da001a3F61D3AcB390">registry</a> · 
-      <a href="https://basescan.org/address/0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f">escrow</a>
+      <a href="https://basescan.org/address/0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f">escrow</a> · 
+      <a href="https://basescan.org/address/0x2120D4e0074e0a41762dF785f2c99086aB8bc51b">verification</a>
     </div>
 
     <div class="stats-row">
@@ -237,7 +238,8 @@
 
     <div class="contracts">
       BoardRegistryV2: <a href="https://basescan.org/address/0xf64B21Ce518ab025208662Da001a3F61D3AcB390">0xf64B...8390</a> · 
-      TaskEscrowV2: <a href="https://basescan.org/address/0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f">0xE2b1...4D2f</a><br>
+      TaskEscrowV2: <a href="https://basescan.org/address/0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f">0xE2b1...4D2f</a> · 
+      VerificationRegistry: <a href="https://basescan.org/address/0x2120D4e0074e0a41762dF785f2c99086aB8bc51b">0x2120...c51b</a><br>
       all data read directly from Base mainnet contracts. no backend. no indexer.
     </div>
   </div>
@@ -252,6 +254,7 @@ const RPCS = [
 const REGISTRY = '0xf64B21Ce518ab025208662Da001a3F61D3AcB390';
 const ESCROW = '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
 const MAIN_BOARD = '0xd021e1df1839a3c91f900ecc32bb83fa9bb9bfb0dfd46c9f9c3cfb9f7bb46e56';
+const VERIFICATION = '0x2120D4e0074e0a41762dF785f2c99086aB8bc51b';
 const DEPLOY_BLOCK = 42544000;
 const USDC_DECIMALS = 6;
 
@@ -261,6 +264,13 @@ const REGISTRY_ABI = [
   'function getBoard(bytes32 boardId) view returns (address owner, string xmtpGroupId, string name, string description, string[] skills, uint256 memberCount, uint256 createdAt, bool active)',
   'function getJoinRequestCount(bytes32 boardId) view returns (uint256)',
   'function getJoinRequest(bytes32 boardId, uint256 index) view returns (address agent, string xmtpAddress, string[] skills, uint256 requestedAt, bool approved, bool rejected)',
+];
+
+const VERIFICATION_ABI = [
+  'event DeliverableSubmitted(bytes32 indexed taskId, bytes32 deliverableHash, address indexed worker)',
+  'event VerificationRecorded(bytes32 indexed taskId, bytes32 verificationHash, bool passed, address indexed verifier)',
+  'function getDeliverable(bytes32 taskId) view returns (bytes32 deliverableHash, bytes32 criteriaHash, bytes32 verificationHash, address worker, address verifier, uint256 submittedAt, uint256 verifiedAt, bool verified, bool passed)',
+  'function getWorkerStats(address worker) view returns (uint256 submissions, uint256 verifiedCount, uint256 passedCount)',
 ];
 
 const ESCROW_ABI = [
@@ -453,8 +463,27 @@ async function loadEscrows(provider) {
       taskId, requestor: e.args.requestor, worker: e.args.worker,
       amount, deadline: Number(e.args.deadline),
       status, blockNumber: e.blockNumber,
+      verified: false, verificationPassed: false,
     };
   }).reverse();
+
+  // Query verification data for each escrow
+  try {
+    const vRegistry = new ethers.Contract(VERIFICATION, VERIFICATION_ABI, provider);
+    for (const esc of escrows) {
+      try {
+        const [dHash, cHash, vHash, , , , , verified, passed] = await vRegistry.getDeliverable(esc.taskId);
+        if (dHash !== '0x' + '0'.repeat(64)) {
+          esc.hasDeliverable = true;
+          esc.deliverableHash = dHash;
+        }
+        if (verified) {
+          esc.verified = true;
+          esc.verificationPassed = passed;
+        }
+      } catch {}
+    }
+  } catch {}
   
   allEscrows = escrows;
   
@@ -483,7 +512,11 @@ function renderEscrows(filter) {
       </div>
       <div class="escrow-parties">
         <span><code>${bsLink(e.requestor)}</code> → <code>${bsLink(e.worker)}</code></span>
-        <span style="color: #333;">block ${e.blockNumber}</span>
+        <span style="color: #333;">
+          ${e.hasDeliverable ? `<span style="color: #6b6bef;" title="Deliverable hash: ${e.deliverableHash?.slice(0,18)}...">📋 delivered</span>` : ''}
+          ${e.verified ? (e.verificationPassed ? '<span style="color: #4ade80;" title="Verification passed">✓ verified</span>' : '<span style="color: #ff7b7b;" title="Verification failed">✗ failed</span>') : ''}
+          block ${e.blockNumber}
+        </span>
       </div>
     </div>
   `).join('');

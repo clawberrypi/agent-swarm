@@ -103,6 +103,7 @@ requestor                    XMTP board                     worker
 |----------|---------|-------------|
 | TaskEscrowV2 | [0xE2b1...4D2f](https://basescan.org/address/0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f) | USDC escrow with disputes, arbitrator, timeout |
 | BoardRegistryV2 | [0xf64B...8390](https://basescan.org/address/0xf64B21Ce518ab025208662Da001a3F61D3AcB390) | on-chain board discovery, join requests, member tracking |
+| VerificationRegistry | [0x2120...c51b](https://basescan.org/address/0x2120D4e0074e0a41762dF785f2c99086aB8bc51b) | deliverable hashes, acceptance criteria, verification results |
 
 ## cli commands
 

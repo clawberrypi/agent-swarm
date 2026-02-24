@@ -755,6 +755,19 @@ const commands = {
       dashState.logEscrow({ taskId, requestor: address, worker: workerAddr, amount, deadline, txHash });
       dashState.logTask({ id: taskId, title: task.title, budget: amount, subtasks: [{ id: `${taskId}-s1` }] }, address);
 
+      // Set acceptance criteria on-chain if provided
+      if (flags.criteria || task.criteria) {
+        try {
+          const { setCriteria } = await import('./src/verification.js');
+          const registryAddr = config.verification?.registry || '0x2120D4e0074e0a41762dF785f2c99086aB8bc51b';
+          const criteriaContent = flags.criteria || task.criteria;
+          const { txHash: critTx, criteriaHash } = await setCriteria(wallet, registryAddr, taskId, criteriaContent);
+          console.log(`Acceptance criteria on-chain: ${criteriaHash.slice(0, 18)}...`);
+        } catch (err) {
+          console.log(`Criteria recording skipped: ${err.message?.slice(0, 60)}`);
+        }
+      }
+
       task.status = 'in-progress';
       task.worker = workerAddr;
       task.groupId = group.id;
@@ -911,6 +924,31 @@ const commands = {
       const tx = await contract.refund(hashTaskId(flags['task-id']));
       await tx.wait();
       console.log(`Refunded: ${tx.hash}`);
+    },
+
+    async verify(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      const { getVerificationTrail, getWorkerStats } = await import('./src/verification.js');
+      const wallet = await getWallet(config);
+      const registryAddr = config.verification?.registry || '0x2120D4e0074e0a41762dF785f2c99086aB8bc51b';
+
+      const trail = await getVerificationTrail(wallet, registryAddr, flags['task-id']);
+      console.log(`Verification trail for ${flags['task-id']}:`);
+      console.log(`  Deliverable hash: ${trail.deliverableHash === '0x' + '0'.repeat(64) ? 'not submitted' : trail.deliverableHash.slice(0, 18) + '...'}`);
+      console.log(`  Criteria hash:    ${trail.criteriaHash === '0x' + '0'.repeat(64) ? 'none set' : trail.criteriaHash.slice(0, 18) + '...'}`);
+      console.log(`  Verified:         ${trail.verified ? (trail.passed ? 'PASSED' : 'FAILED') : 'not yet'}`);
+      if (trail.verified) {
+        console.log(`  Verification:     ${trail.verificationHash.slice(0, 18)}...`);
+        console.log(`  Verifier:         ${trail.verifier}`);
+        console.log(`  Verified at:      ${new Date(trail.verifiedAt * 1000).toISOString()}`);
+      }
+      if (trail.worker !== '0x0000000000000000000000000000000000000000') {
+        const stats = await getWorkerStats(wallet, registryAddr, trail.worker);
+        console.log(`\nWorker stats (${trail.worker.slice(0, 10)}...):`);
+        console.log(`  Submissions: ${stats.submissions}`);
+        console.log(`  Verified:    ${stats.verified}`);
+        console.log(`  Pass rate:   ${stats.passRate}`);
+      }
     },
 
     async 'claim-timeout'(config, flags) {
@@ -1095,6 +1133,39 @@ const commands = {
                     worker: address,
                     result,
                   });
+
+                  // Submit deliverable hash on-chain (verification trail)
+                  try {
+                    const { submitDeliverable, hashContent, verifyCodeTask, recordVerification } = await import('./src/verification.js');
+                    const wallet = await getWallet(config);
+                    const registryAddr = config.verification?.registry || '0x2120D4e0074e0a41762dF785f2c99086aB8bc51b';
+                    const deliverableStr = JSON.stringify(result);
+                    const { txHash: dvTx, deliverableHash } = await submitDeliverable(wallet, registryAddr, parsed.id, deliverableStr);
+                    console.log(`  → Deliverable hash on-chain: ${deliverableHash.slice(0, 18)}... (${dvTx.slice(0, 14)}...)`);
+
+                    // Auto-verify code tasks with acceptance criteria
+                    if (parsed.criteria && result.category === 'coding' && result.status === 'completed') {
+                      const workDir = result.files?.length ? join(__dirname, 'workdir', parsed.id) : null;
+                      if (workDir) {
+                        const report = await verifyCodeTask(workDir, parsed.criteria);
+                        const reportStr = JSON.stringify(report);
+                        const { txHash: vfTx } = await recordVerification(wallet, registryAddr, parsed.id, reportStr, report.passed);
+                        console.log(`  → Verification ${report.passed ? 'PASSED' : 'FAILED'} on-chain (${vfTx.slice(0, 14)}...)`);
+                      }
+                    }
+
+                    // Notify requestor about on-chain verification
+                    await sendProtocolMessage(c, {
+                      type: 'deliverable_submitted',
+                      taskId: parsed.id,
+                      deliverableHash,
+                      txHash: dvTx,
+                      registry: registryAddr,
+                    });
+                  } catch (vErr) {
+                    console.log(`  → Verification trail skipped: ${vErr.message?.slice(0, 80)}`);
+                  }
+
                   dashState.registerAgent(address, 'worker');
                   dashState.logClaim(parsed.id, subId, address);
                   dashState.logResult(parsed.id, subId, address);
@@ -1166,6 +1237,7 @@ Commands:
   escrow release --task-id <id>   Release funds to worker
   escrow dispute --task-id <id>   File a dispute
   escrow refund --task-id <id>    Refund after deadline
+  escrow verify --task-id <id>       Check on-chain verification trail
   escrow claim-timeout --task-id <id>  Claim refund after dispute timeout
   `);
   process.exit(0);
