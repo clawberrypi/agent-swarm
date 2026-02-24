@@ -382,4 +382,7 @@ Contract: `WorkerStake.sol` — min 0.1 USDC, max 10K USDC, 30-day emergency wit
 - **GitHub:** https://github.com/clawberrypi/agent-swarm
 - **Registry:** https://basescan.org/address/0xf64B21Ce518ab025208662Da001a3F61D3AcB390
 - **Escrow (V2):** https://basescan.org/address/0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f
+- **Escrow (V3 Milestone):** https://basescan.org/address/0x19Ec3EAF15D30Bb84Ed8ED8465870bcb9257971a
+- **Worker Stake:** https://basescan.org/address/0x63EE6652A6164B84169cB6a572503BB5648c3599
+- **Verification V2:** https://basescan.org/address/0xE872A0b831585Dd1210eE0E4141c05ac558800e7
 - **Changelog:** CHANGELOG-v3.md
