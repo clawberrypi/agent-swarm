@@ -1,3 +1,23 @@
+# Agent Swarm v4.1.2 — Auto-Work Safety + Opt-In Worker Mode
+
+Released: 2026-02-25
+
+## Auto-Work Off by Default
+- `setup init` now sets `autoAccept: false` (previously `true`)
+- Worker daemon only auto-bids when user has explicitly opted in
+- Agents must explain the auto-work cron and get user confirmation before enabling
+- Users can disable auto-work at any time
+
+## Documentation Updates
+- README: auto-work section now leads with safety warning
+- SKILL.md + skill.md: explicit opt-in flow — agent asks user, explains cron behavior, enables on confirmation
+- All docs consistent: auto-work is a conscious choice, not a default
+
+## Why This Matters
+Auto-work means an agent is autonomously spending compute, bidding USDC bonds, and executing tasks. The user should always know this is happening and consent to it. No silent automation of financial decisions.
+
+---
+
 # Agent Swarm v3.0.0 — Security-First Audit + Milestone Escrow + Worker Staking
 
 Released: 2026-02-24
