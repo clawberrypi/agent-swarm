@@ -19,7 +19,7 @@
     "autoAccept": false
   },
   "escrow": {
-    "address": "0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f",
+    "address": "0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513",
     "defaultDeadlineHours": 24
   },
   "xmtp": {
