@@ -322,9 +322,10 @@ const commands = {
         console.log('  Post a listing: node cli.js listing post --title "..." --budget 1.00');
         console.log('  Start working:  node cli.js worker start');
       } else {
-        console.log('  Join a board:    node cli.js registry join --board-id <id>');
-        console.log('  List boards:     node cli.js registry list');
-        console.log('  Or create one:   node cli.js board create');
+        console.log('  Join the main board:');
+        console.log('    node cli.js registry join --board-id 0xd021e1df1839a3c91f900ecc32bb83fa9bb9bfb0dfd46c9f9c3cfb9f7bb46e56');
+        console.log('  Or list all boards:');
+        console.log('    node cli.js registry list');
       }
 
       await agent.stop();
@@ -562,7 +563,68 @@ const commands = {
       console.log(`Requesting to join with skills: ${mySkills.join(', ')}...`);
       const { txHash } = await requestJoinBoard(wallet, boardId, wallet.address, mySkills);
       console.log(`Join request submitted: ${txHash}`);
-      console.log('Board owner will review and add you to the XMTP group.');
+
+      // Auto-poll for approval and connect to XMTP board
+      if (!flags['no-wait']) {
+        console.log('\nWaiting for board owner to approve (auto-approved boards are instant)...');
+        const maxWait = parseInt(flags['timeout'] || '180'); // 3 min default
+        const pollInterval = 10; // seconds
+        let approved = false;
+
+        // Find our request index
+        const reqCount = Number(await registry.getJoinRequestCount(boardId));
+        let ourIndex = reqCount - 1; // usually the last one
+
+        for (let elapsed = 0; elapsed < maxWait; elapsed += pollInterval) {
+          const [agent, , , , isApproved] = await registry.getJoinRequest(boardId, ourIndex);
+          if (isApproved) {
+            approved = true;
+            console.log('✅ Approved on-chain!');
+            break;
+          }
+          process.stdout.write('.');
+          await new Promise(r => setTimeout(r, pollInterval * 1000));
+        }
+
+        if (!approved) {
+          console.log('\n⏳ Not approved yet. You can check later with: node cli.js registry requests');
+          console.log('Once approved, connect with: node cli.js board connect --id ' + xmtpGroupId);
+        } else {
+          // Auto-connect to the XMTP board
+          console.log(`Connecting to XMTP board: ${xmtpGroupId}...`);
+          config.board = config.board || {};
+          config.board.id = xmtpGroupId;
+          writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+
+          // Verify connection by syncing
+          try {
+            const { agent: xmtpAgent } = await getAgent(config);
+            const client = xmtpAgent.client || xmtpAgent;
+            let found = false;
+            for (let attempt = 0; attempt < 5; attempt++) {
+              await client.conversations.syncAll();
+              const convos = await client.conversations.list();
+              if (convos.find(c => c.id === xmtpGroupId)) {
+                found = true;
+                break;
+              }
+              await new Promise(r => setTimeout(r, 3000));
+            }
+            if (found) {
+              console.log('✅ Connected to board. You are ready to work!');
+              playSound('ready');
+            } else {
+              console.log('⚠️  Board approved but XMTP group not found yet.');
+              console.log('This can take a moment. Try: node cli.js setup check');
+            }
+            await xmtpAgent.stop();
+          } catch (err) {
+            console.log('Board ID saved. XMTP sync may take a moment.');
+          }
+        }
+      } else {
+        console.log('Board owner will review and add you to the XMTP group.');
+      }
     },
 
     async requests(config, flags) {
