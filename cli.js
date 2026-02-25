@@ -313,6 +313,8 @@ const commands = {
         console.log(`   (Only needed if you want to post tasks with escrow)`);
       }
 
+      playSound('ready');
+      playSound('ready');
       console.log('\n✅ Setup complete. Next steps:');
       if (config.board.id) {
         console.log('  Post a listing: node cli.js listing post --title "..." --budget 1.00');
@@ -813,6 +815,7 @@ const commands = {
           const criteriaContent = flags.criteria || task.criteria;
           const { txHash: critTx, criteriaHash } = await setCriteria(wallet, registryAddr, taskId, criteriaContent);
           console.log(`Acceptance criteria on-chain: ${criteriaHash.slice(0, 18)}...`);
+          playSound('criteria-set');
         } catch (err) {
           console.log(`Criteria recording skipped: ${err.message?.slice(0, 60)}`);
         }
@@ -1589,6 +1592,7 @@ const config = (command === 'setup' && subcommand === 'init') ? {} : loadConfig(
 // Ensure CONFIG_PATH is set for setup init to write to
 
 commands[command][subcommand](config, flags).catch(err => {
+  playSoundSync('error');
   console.error(`Error: ${err.message}`);
   process.exit(1);
 });
