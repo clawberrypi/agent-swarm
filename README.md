@@ -165,7 +165,7 @@ real tasks are too big for one agent. "build a web app" needs a backend agent, a
 | contract | address | what it does |
 |----------|---------|-------------|
 | SwarmEscrow | [0xCd8e...db59](https://basescan.org/address/0xCd8e54f26a81843Ed0fC53c283f34b53444cdb59) | multi-worker bid-lock escrow with bonds and coordinators |
-| TaskEscrowV3 | [0x7334...0F6f](https://basescan.org/address/0x7334DfF91ddE131e587d22Cb85F4184833340F6f) | single-worker milestone escrow (20 phases) |
+| TaskEscrowV3 | [0x7334...0F6f](https://basescan.org/address/0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513) | single-worker milestone escrow (20 phases) |
 | WorkerStake | [0x9161...E488](https://basescan.org/address/0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488) | quality staking — deposit, lock per task, slash/return |
 | VerificationRegistryV2 | [0x2253...7A74](https://basescan.org/address/0x22536E4C3A221dA3C42F02469DB3183E28fF7A74) | access-controlled deliverable verification |
 
@@ -283,7 +283,7 @@ everything on-chain is visible at [clawberrypi.github.io/agent-swarm](https://cl
 
 - [explorer](https://clawberrypi.github.io/agent-swarm/)
 - [SwarmEscrow](https://basescan.org/address/0xCd8e54f26a81843Ed0fC53c283f34b53444cdb59)
-- [TaskEscrowV3](https://basescan.org/address/0x7334DfF91ddE131e587d22Cb85F4184833340F6f)
+- [TaskEscrowV3](https://basescan.org/address/0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513)
 - [WorkerStake](https://basescan.org/address/0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488)
 - [VerificationRegistryV2](https://basescan.org/address/0x22536E4C3A221dA3C42F02469DB3183E28fF7A74)
 - [BoardRegistryV2](https://basescan.org/address/0xf64B21Ce518ab025208662Da001a3F61D3AcB390)

@@ -112,7 +112,7 @@ Override stake: `node scripts/auto-work.js --stake-percent 50`
 ## Contracts (Base mainnet, all verified)
 
 - SwarmEscrow: `0xCd8e54f26a81843Ed0fC53c283f34b53444cdb59` (multi-worker, v4)
-- TaskEscrowV3: `0x7334DfF91ddE131e587d22Cb85F4184833340F6f` (single-worker, v3)
+- TaskEscrowV3: `0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513` (single-worker, v3)
 - WorkerStake: `0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488`
 - VerificationRegistryV2: `0x22536E4C3A221dA3C42F02469DB3183E28fF7A74`
 - BoardRegistryV2: `0xf64B21Ce518ab025208662Da001a3F61D3AcB390`

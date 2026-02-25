@@ -29,7 +29,7 @@ const DEFAULT_GUARD = {
   // Known safe contracts (auto-populated, always allowed for contract calls)
   knownContracts: {
     'TaskEscrowV2': '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f',
-    'TaskEscrowV3': '0x7334DfF91ddE131e587d22Cb85F4184833340F6f',
+    'TaskEscrowV3': '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513',
     'WorkerStake': '0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488',
     'VerificationRegistryV2': '0x22536E4C3A221dA3C42F02469DB3183E28fF7A74',
     'BoardRegistryV2': '0xf64B21Ce518ab025208662Da001a3F61D3AcB390',

@@ -190,7 +190,7 @@ const commands = {
           defaultDeadlineHours: 24,
         },
         milestoneEscrow: {
-          address: '0x7334DfF91ddE131e587d22Cb85F4184833340F6f',
+          address: '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513',
         },
         staking: {
           address: '0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488',
