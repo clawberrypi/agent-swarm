@@ -202,10 +202,11 @@ async function main() {
           try {
             const { loadWallet } = await import('../src/wallet.js');
             const w = loadWallet(config.wallet.privateKey);
-            const { createMilestoneEscrow } = await import('../src/milestone-escrow.js');
+            const { createMilestoneEscrow, getDefaultMilestoneEscrowAddress } = await import('../src/milestone-escrow.js');
 
             log('ESCROW', `Creating escrow: $${amount} USDC for ${workerAddr.slice(0, 10)}...`);
-            const { txHash } = await createMilestoneEscrow(w, null, {
+            const escrowAddr = config.milestoneEscrow?.address || getDefaultMilestoneEscrowAddress();
+              const { txHash } = await createMilestoneEscrow(w, escrowAddr, {
               taskId,
               worker: workerAddr,
               milestones: [{ amount, deadline }],
@@ -274,10 +275,12 @@ async function main() {
             try {
               const { loadWallet } = await import('../src/wallet.js');
               const w = loadWallet(config.wallet.privateKey);
-              const { releaseMilestone } = await import('../src/milestone-escrow.js');
+              const { releaseMilestone, getDefaultMilestoneEscrowAddress } = await import('../src/milestone-escrow.js');
 
               log('RELEASE', `Releasing milestone payment...`);
-              const { txHash } = await releaseMilestone(w, null, { taskId, milestoneIndex: 0 });
+              const escrowAddr2 = config.milestoneEscrow?.address || getAddr();
+                const releaseAddr = config.milestoneEscrow?.address || getDefaultMilestoneEscrowAddress();
+                const { txHash } = await releaseMilestone(w, releaseAddr, taskId, 0);
               log('RELEASE', `Paid: ${txHash}`);
 
               // Send payment confirmation
@@ -337,10 +340,12 @@ async function main() {
               try {
                 const { loadWallet } = await import('../src/wallet.js');
                 const w = loadWallet(config.wallet.privateKey);
-                const { releaseMilestone } = await import('../src/milestone-escrow.js');
+                const mEscrow = await import('../src/milestone-escrow.js');
 
                 log('RELEASE', `Releasing milestone payment...`);
-                const { txHash } = await releaseMilestone(w, null, { taskId, milestoneIndex: 0 });
+                const escrowAddr2 = config.milestoneEscrow?.address || getAddr();
+                const releaseAddr = config.milestoneEscrow?.address || getDefaultMilestoneEscrowAddress();
+                const { txHash } = await releaseMilestone(w, releaseAddr, taskId, 0);
                 log('RELEASE', `Paid: ${txHash}`);
 
                 await board.send(encodeText(JSON.stringify({

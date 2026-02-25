@@ -186,11 +186,11 @@ const commands = {
           autoAccept: flags['auto-accept'] === 'true' || false,  // default false — user must opt in
         },
         escrow: {
-          address: '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f',
+          address: '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513',  // TaskEscrowV3 — primary escrow
           defaultDeadlineHours: 24,
         },
         milestoneEscrow: {
-          address: '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513',
+          address: '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513',  // same as escrow — V3 is milestone-based
         },
         staking: {
           address: '0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488',
@@ -845,17 +845,15 @@ const commands = {
         process.exit(1);
       }
 
-      // 2. Create escrow on-chain
-      console.log(`Creating escrow: $${amount} USDC for ${workerAddr}...`);
-      const { createEscrow, hashTaskId } = await import('./src/escrow.js');
-      const escrowAddr = config.escrow?.address || '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
-      const deadline = Math.floor(Date.now() / 1000) + (deadlineHours * 3600);
+      // 2. Create milestone escrow on-chain (TaskEscrowV3)
+      console.log(`Creating milestone escrow: $${amount} USDC for ${workerAddr}...`);
+      const { createMilestoneEscrow, hashTaskId } = await import('./src/milestone-escrow.js');
+      const escrowAddr = config.milestoneEscrow?.address || config.escrow?.address || '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513';
 
-      const { txHash, taskIdHash } = await createEscrow(wallet, escrowAddr, {
+      const { txHash, taskIdHash } = await createMilestoneEscrow(wallet, escrowAddr, {
         taskId,
         worker: workerAddr,
-        amount,
-        deadline,
+        milestones: [{ amount, deadlineHours }],
       });
       console.log(`Escrow created: ${txHash}`); playSound('escrow-sealed');
 
@@ -906,7 +904,7 @@ const commands = {
       if (flags.criteria || task.criteria) {
         try {
           const { setCriteria } = await import('./src/verification.js');
-          const registryAddr = config.verification?.registry || '0x2120D4e0074e0a41762dF785f2c99086aB8bc51b';
+          const registryAddr = config.verification?.registry || '0x22536E4C3A221dA3C42F02469DB3183E28fF7A74';
           const criteriaContent = flags.criteria || task.criteria;
           const { txHash: critTx, criteriaHash } = await setCriteria(wallet, registryAddr, taskId, criteriaContent);
           console.log(`Acceptance criteria on-chain: ${criteriaHash.slice(0, 18)}...`);
@@ -1015,25 +1013,29 @@ const commands = {
   escrow: {
     async status(config, flags) {
       if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
-      const { getEscrowStatus } = await import('./src/escrow.js');
+      const { getMilestoneEscrowStatus } = await import('./src/milestone-escrow.js');
       const wallet = await getWallet(config);
-      const escrowAddr = config.escrow?.address || '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
-      const status = await getEscrowStatus(wallet, escrowAddr, flags['task-id']);
+      const escrowAddr = config.milestoneEscrow?.address || config.escrow?.address || '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513';
+      const status = await getMilestoneEscrowStatus(wallet, escrowAddr, flags['task-id']);
+      if (!status) { console.log('No escrow found for this task.'); return; }
       console.log(`Escrow for ${flags['task-id']}:`);
       console.log(`  Requestor: ${status.requestor}`);
       console.log(`  Worker: ${status.worker}`);
-      console.log(`  Amount: $${status.amount} USDC`);
-      console.log(`  Deadline: ${new Date(status.deadline * 1000).toISOString()}`);
-      console.log(`  Status: ${status.status}`);
+      console.log(`  Total: $${status.totalAmount} USDC`);
+      console.log(`  Milestones: ${status.milestoneCount} (${status.releasedCount} released)`);
+      for (const m of status.milestones) {
+        console.log(`    [${m.index}] $${m.amount} — ${m.status} — deadline: ${new Date(m.deadline * 1000).toISOString()}`);
+      }
     },
 
     async release(config, flags) {
       if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
-      const { releaseEscrow } = await import('./src/escrow.js');
+      const milestoneIndex = parseInt(flags.index || flags.milestone || '0');
+      const { releaseMilestone } = await import('./src/milestone-escrow.js');
       const wallet = await getWallet(config);
-      const escrowAddr = config.escrow?.address || '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
-      console.log('Releasing escrow...');
-      const { txHash } = await releaseEscrow(wallet, escrowAddr, flags['task-id']);
+      const escrowAddr = config.milestoneEscrow?.address || config.escrow?.address || '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513';
+      console.log(`Releasing milestone ${milestoneIndex}...`);
+      const { txHash } = await releaseMilestone(wallet, escrowAddr, flags['task-id'], milestoneIndex);
       console.log(`Released: ${txHash}`); playSound('payment-released');
 
       // Update dashboard + local log
@@ -1050,26 +1052,26 @@ const commands = {
 
     async dispute(config, flags) {
       if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
-      const { disputeEscrow } = await import('./src/escrow.js');
+      const milestoneIndex = parseInt(flags.index || flags.milestone || '0');
+      const { disputeMilestone } = await import('./src/milestone-escrow.js');
       const wallet = await getWallet(config);
-      const escrowAddr = config.escrow?.address || '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
-      console.log('Filing dispute...');
-      const { txHash } = await disputeEscrow(wallet, escrowAddr, flags['task-id']);
+      const escrowAddr = config.milestoneEscrow?.address || config.escrow?.address || '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513';
+      console.log(`Filing dispute on milestone ${milestoneIndex}...`);
+      const { txHash } = await disputeMilestone(wallet, escrowAddr, flags['task-id'], milestoneIndex);
       console.log(`Disputed: ${txHash}`);
     },
 
     async refund(config, flags) {
       if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
-      const { default: escrowMod } = await import('./src/escrow.js');
+      const milestoneIndex = parseInt(flags.index || flags.milestone || '0');
       const wallet = await getWallet(config);
-      const escrowAddr = config.escrow?.address || '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
+      const escrowAddr = config.milestoneEscrow?.address || config.escrow?.address || '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513';
       const { ethers } = await import('ethers');
-      // Direct contract call for refund
-      const abi = ['function refund(bytes32 taskId) external'];
+      const { hashTaskId } = await import('./src/milestone-escrow.js');
+      const abi = ['function refundMilestone(bytes32 taskId, uint256 milestoneIndex) external'];
       const contract = new ethers.Contract(escrowAddr, abi, wallet);
-      const { hashTaskId } = await import('./src/escrow.js');
-      console.log('Requesting refund...');
-      const tx = await contract.refund(hashTaskId(flags['task-id']));
+      console.log(`Requesting refund for milestone ${milestoneIndex}...`);
+      const tx = await contract.refundMilestone(hashTaskId(flags['task-id']), milestoneIndex);
       await tx.wait();
       console.log(`Refunded: ${tx.hash}`);
     },
@@ -1078,7 +1080,7 @@ const commands = {
       if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
       const { getVerificationTrail, getWorkerStats } = await import('./src/verification.js');
       const wallet = await getWallet(config);
-      const registryAddr = config.verification?.registry || '0x2120D4e0074e0a41762dF785f2c99086aB8bc51b';
+      const registryAddr = config.verification?.registry || '0x22536E4C3A221dA3C42F02469DB3183E28fF7A74';
 
       const trail = await getVerificationTrail(wallet, registryAddr, flags['task-id']);
       console.log(`Verification trail for ${flags['task-id']}:`);
@@ -1101,12 +1103,17 @@ const commands = {
 
     async 'claim-timeout'(config, flags) {
       if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
-      const { claimDisputeTimeout } = await import('./src/escrow.js');
+      const milestoneIndex = parseInt(flags.index || flags.milestone || '0');
       const wallet = await getWallet(config);
-      const escrowAddr = config.escrow?.address || '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
-      console.log('Claiming dispute timeout refund...');
-      const { txHash } = await claimDisputeTimeout(wallet, escrowAddr, flags['task-id']);
-      console.log(`Refunded: ${txHash}`);
+      const escrowAddr = config.milestoneEscrow?.address || config.escrow?.address || '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513';
+      const { ethers } = await import('ethers');
+      const { hashTaskId } = await import('./src/milestone-escrow.js');
+      const abi = ['function claimMilestoneTimeout(bytes32 taskId, uint256 milestoneIndex) external'];
+      const contract = new ethers.Contract(escrowAddr, abi, wallet);
+      console.log(`Claiming dispute timeout refund for milestone ${milestoneIndex}...`);
+      const tx = await contract.claimMilestoneTimeout(hashTaskId(flags['task-id']), milestoneIndex);
+      await tx.wait();
+      console.log(`Refunded: ${tx.hash}`);
     },
 
     // ─── Milestone Escrow Commands ───
@@ -1568,7 +1575,7 @@ const commands = {
                   try {
                     const { submitDeliverable, hashContent, verifyCodeTask, recordVerification } = await import('./src/verification.js');
                     const wallet = await getWallet(config);
-                    const registryAddr = config.verification?.registry || '0x2120D4e0074e0a41762dF785f2c99086aB8bc51b';
+                    const registryAddr = config.verification?.registry || '0x22536E4C3A221dA3C42F02469DB3183E28fF7A74';
                     const deliverableStr = JSON.stringify(result);
                     const { txHash: dvTx, deliverableHash } = await submitDeliverable(wallet, registryAddr, parsed.id, deliverableStr);
                     console.log(`  → Deliverable hash on-chain: ${deliverableHash.slice(0, 18)}... (${dvTx.slice(0, 14)}...)`);

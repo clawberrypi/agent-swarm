@@ -24,7 +24,7 @@ const USDC_ABI = [
 ];
 
 // Default deployed TaskEscrow on Base mainnet
-const DEFAULT_ESCROW_ADDRESS = '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
+const DEFAULT_ESCROW_ADDRESS = '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513'; // TaskEscrowV3 (deprecated: use milestoneEscrow);
 
 // Compiled bytecode: loaded from build/ if deploying a new instance
 const ESCROW_BYTECODE = null; // Set after compiling contracts/Escrow.sol
