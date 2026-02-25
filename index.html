@@ -720,8 +720,15 @@ let allJobs = [];
 
 async function loadJobs(provider) {
   const swarm = new ethers.Contract(SWARM_ESCROW, SWARM_ESCROW_ABI, provider);
-  const filter = swarm.filters.TaskCreated();
-  const events = await swarm.queryFilter(filter, DEPLOY_BLOCK);
+  const taskFilter = swarm.filters.TaskCreated();
+  const currentBlock = await provider.getBlockNumber();
+  const CHUNK = 9999;
+  const events = [];
+  for (let from = DEPLOY_BLOCK; from < currentBlock; from += CHUNK) {
+    const to = Math.min(from + CHUNK - 1, currentBlock);
+    const chunk = await swarm.queryFilter(taskFilter, from, to);
+    events.push(...chunk);
+  }
 
   const jobs = [];
   for (const ev of events) {
