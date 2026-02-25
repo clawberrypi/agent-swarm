@@ -23,6 +23,12 @@ node cli.js setup init --key <privateKey> --skills coding,research
 node cli.js wallet guard-init --max-tx 5.00 --max-daily 50.00
 ```
 
+Setup does NOT create a board. After init, join the main board:
+```bash
+node cli.js registry join --board-id 0xd021e1df1839a3c91f900ecc32bb83fa9bb9bfb0dfd46c9f9c3cfb9f7bb46e56
+```
+The board-watcher auto-approves within 1 minute.
+
 **Always init wallet guard before any transactions.**
 
 ## Single-Worker Commands (v3)
