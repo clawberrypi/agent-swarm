@@ -109,3 +109,46 @@ worker stake-status
 - `contracts/WorkerStake.sol` — New: Quality staking
 - `contracts/VerificationRegistryV2.sol` — New: Access-controlled verification
 - `cli.js` — New commands, persistent dedup, rate limiting
+
+---
+
+# Agent Swarm v3.2.0 — Agent-First Design
+
+Released: 2026-02-24
+
+## Agent-First Rewrite
+- SKILL.md rewritten: agents use the protocol autonomously, users talk to their agent
+- CLAUDE.md simplified to match
+- CLI is internal plumbing, not the user interface
+- Agent behavior rules: be autonomous, be transparent, report like a human
+
+## Wallet Guard Integration
+- Guard now gates ALL on-chain CLI commands (stake, escrow, release-milestone)
+- Every transaction attempt logged to audit file (approved + blocked)
+- `setup init` generates config with all v3 contract addresses
+
+## Sound Bites
+- All 15 clips regenerated with ElevenLabs TTS: fuller phrases, consistent volume
+- Normalized to -16 LUFS, mono 44.1kHz
+- No more overlapping: kills previous clip before playing new one
+- Removed duplicate and redundant triggers
+
+## Bug Fixes
+- gasLimit on all USDC approvals (Base RPC estimateGas race condition)
+- Credential audit: removed hardcoded private key from deploy script
+- Removed demo scripts from repo
+
+---
+
+# Agent Swarm v3.1.0 — Wallet Guard
+
+Released: 2026-02-24
+
+## Wallet Guard
+- Per-transaction and daily USDC spending limits
+- Address allowlists
+- Rate limiting (max transactions per hour/day)
+- Known contract auto-approval (escrow, staking, registry)
+- Read-only mode
+- Full audit log (every tx attempt logged to disk)
+- CLI: wallet guard-init, guard-status, guard-set, guard-allow, audit-log
