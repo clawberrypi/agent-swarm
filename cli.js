@@ -43,7 +43,7 @@ async function checkGuard(config, { to, usdcAmount, action }) {
     console.error(`🛡️  BLOCKED by wallet guard: ${result.reason}`);
     process.exit(1);
   }
-  playSound('approved');
+  // No sound on approval — the command itself plays its contextual sound
 }
 
 // Lazy wallet loader (avoids circular with getWallet which may not be defined yet)
@@ -313,7 +313,6 @@ const commands = {
         console.log(`   (Only needed if you want to post tasks with escrow)`);
       }
 
-      playSound('ready');
       playSound('ready');
       console.log('\n✅ Setup complete. Next steps:');
       if (config.board.id) {

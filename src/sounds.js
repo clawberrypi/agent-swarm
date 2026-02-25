@@ -54,8 +54,12 @@ function detectPlayerSync() {
   return false;
 }
 
+// Track current playing child so we can kill it before playing a new one
+let _currentChild = null;
+
 /**
  * Play a sound bite. Non-blocking, fire-and-forget.
+ * Kills any currently playing clip first — no overlapping.
  * @param {string} name - Clip name (e.g. 'approved', 'blocked', 'verified')
  */
 export function playSound(name) {
@@ -70,10 +74,16 @@ export function playSound(name) {
   const p = detectPlayerSync();
   if (!p) return;
   
-  // Fire and forget — don't block the CLI
+  // Kill previous clip if still playing
+  if (_currentChild) {
+    try { _currentChild.kill(); } catch {}
+    _currentChild = null;
+  }
+  
   try {
-    const child = execFile(p.cmd, [...p.args, path], { stdio: 'ignore' });
-    child.unref();
+    _currentChild = execFile(p.cmd, [...p.args, path], { stdio: 'ignore' });
+    _currentChild.on('exit', () => { if (_currentChild?.pid === _currentChild?.pid) _currentChild = null; });
+    _currentChild.unref();
   } catch {
     // Audio playback is best-effort
   }
@@ -94,6 +104,12 @@ export function playSoundSync(name) {
   
   const p = detectPlayerSync();
   if (!p) return;
+  
+  // Kill any async clip first
+  if (_currentChild) {
+    try { _currentChild.kill(); } catch {}
+    _currentChild = null;
+  }
   
   try {
     execFileSync(p.cmd, [...p.args, path], { stdio: 'ignore', timeout: 5000 });
