@@ -24,6 +24,14 @@ export const MessageType = {
   BID_WITHDRAW: 'bid_withdraw',
   // Subcontracting
   SUBTASK_DELEGATION: 'subtask_delegation',
+  // Swarm coordination (multi-worker tasks)
+  TASK_CREATED: 'task_created',       // Requestor announces task open for bids
+  BID_ACCEPTED: 'bid_accepted',       // Requestor notifies worker their bid was accepted
+  TASK_FUNDED: 'task_funded',         // Requestor funded escrow, work can begin
+  MILESTONE_ASSIGNED: 'milestone_assigned', // Worker notified of their assigned milestone
+  PROGRESS_UPDATE: 'progress_update', // Worker broadcasts progress to task group
+  COORDINATOR_ASSIGNED: 'coordinator_assigned', // Coordinator role assigned
+  TASK_GROUP_INVITE: 'task_group_invite', // Invitation to join per-task XMTP group
 };
 
 // ─── Input Limits ───
@@ -205,4 +213,68 @@ export function createSubtaskDelegation({ parentTaskId, subtaskId, delegatedList
 export function validateSubtaskDelegation(msg) {
   return msg?.type === MessageType.SUBTASK_DELEGATION
     && msg.parentTaskId && msg.subtaskId && msg.worker;
+}
+
+// ─── Swarm Coordination (Multi-Worker) ───
+
+/** Create a task-created announcement (posted to board) */
+export function createTaskCreated({ taskId, title, description, budget, milestoneCount, bidDeadline, bondAmount, skills_needed, requestor }) {
+  return {
+    type: MessageType.TASK_CREATED, taskId, title, description, budget,
+    milestoneCount, bidDeadline, bondAmount: bondAmount || 0,
+    skills_needed: skills_needed || [], requestor,
+  };
+}
+
+/** Create a bid-accepted notification */
+export function createBidAccepted({ taskId, worker, milestoneIndex }) {
+  return { type: MessageType.BID_ACCEPTED, taskId, worker, milestoneIndex: milestoneIndex ?? null };
+}
+
+/** Create a task-funded notification */
+export function createTaskFunded({ taskId, totalAmount, txHash, escrowContract }) {
+  return { type: MessageType.TASK_FUNDED, taskId, totalAmount, txHash, escrowContract };
+}
+
+/** Create a milestone assignment notification */
+export function createMilestoneAssigned({ taskId, milestoneIndex, worker, amount, deadline }) {
+  return { type: MessageType.MILESTONE_ASSIGNED, taskId, milestoneIndex, worker, amount, deadline };
+}
+
+/** Create a progress update */
+export function createProgressUpdate({ taskId, milestoneIndex, worker, message, percentComplete }) {
+  return { type: MessageType.PROGRESS_UPDATE, taskId, milestoneIndex, worker, message, percentComplete: percentComplete || null };
+}
+
+/** Create a coordinator assignment */
+export function createCoordinatorAssigned({ taskId, coordinator }) {
+  return { type: MessageType.COORDINATOR_ASSIGNED, taskId, coordinator };
+}
+
+/** Create a task group invite */
+export function createTaskGroupInvite({ taskId, groupId, title }) {
+  return { type: MessageType.TASK_GROUP_INVITE, taskId, groupId, title };
+}
+
+/** Validate task-created */
+export function validateTaskCreated(msg) {
+  return msg?.type === MessageType.TASK_CREATED
+    && msg.taskId && validString(msg.taskId, LIMITS.MAX_ID)
+    && msg.title && validString(msg.title, LIMITS.MAX_TITLE)
+    && msg.requestor;
+}
+
+/** Validate bid-accepted */
+export function validateBidAccepted(msg) {
+  return msg?.type === MessageType.BID_ACCEPTED && msg.taskId && msg.worker;
+}
+
+/** Validate task-funded */
+export function validateTaskFunded(msg) {
+  return msg?.type === MessageType.TASK_FUNDED && msg.taskId && msg.totalAmount && msg.txHash;
+}
+
+/** Validate progress update */
+export function validateProgressUpdate(msg) {
+  return msg?.type === MessageType.PROGRESS_UPDATE && msg.taskId && msg.worker && msg.message;
 }

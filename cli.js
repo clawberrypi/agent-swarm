@@ -198,6 +198,9 @@ const commands = {
         verification: {
           registry: '0x22536E4C3A221dA3C42F02469DB3183E28fF7A74',
         },
+        swarmEscrow: {
+          address: '0xCd8e54f26a81843Ed0fC53c283f34b53444cdb59',
+        },
         xmtp: { env: 'production' },
         network: {
           chainId: 8453,
@@ -1088,6 +1091,171 @@ const commands = {
     },
   },
 
+  // ─── Swarm Commands (Multi-Worker Escrow) ───
+  swarm: {
+    async 'create-task'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      if (!flags.budget) { console.error('--budget required'); process.exit(1); }
+      if (!flags.milestones) { console.error('--milestones <count> required'); process.exit(1); }
+
+      const { createSwarmTask } = await import('./src/swarm-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.swarmEscrow?.address;
+      if (!contractAddr) { console.error('SwarmEscrow not configured.'); process.exit(1); }
+
+      await checkGuard(config, { to: contractAddr, action: 'createSwarmTask' });
+      const { txHash, taskIdHash } = await createSwarmTask(wallet, contractAddr, {
+        taskId: flags['task-id'],
+        totalBudget: flags.budget,
+        milestoneCount: parseInt(flags.milestones),
+        bidDeadlineHours: parseInt(flags['bid-deadline'] || '24'),
+        bondAmount: flags.bond || '0',
+      });
+      console.log(`Task created (bidding open): ${txHash}`);
+      console.log(`Task hash: ${taskIdHash}`);
+      playSound('escrow-sealed');
+    },
+
+    async bid(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      if (!flags.price) { console.error('--price required'); process.exit(1); }
+
+      const { placeBid } = await import('./src/swarm-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.swarmEscrow?.address;
+      if (!contractAddr) { console.error('SwarmEscrow not configured.'); process.exit(1); }
+
+      await checkGuard(config, { to: contractAddr, usdcAmount: flags.bond || '0', action: 'placeBid' });
+      const { txHash } = await placeBid(wallet, contractAddr, {
+        taskId: flags['task-id'],
+        price: flags.price,
+      });
+      console.log(`Bid placed: ${txHash}`);
+      playSound('stake-locked');
+    },
+
+    async 'accept-bid'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      if (!flags.worker) { console.error('--worker required'); process.exit(1); }
+
+      const { acceptBid } = await import('./src/swarm-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.swarmEscrow?.address;
+      if (!contractAddr) { console.error('SwarmEscrow not configured.'); process.exit(1); }
+
+      const { txHash } = await acceptBid(wallet, contractAddr, {
+        taskId: flags['task-id'],
+        worker: flags.worker,
+      });
+      console.log(`Bid accepted: ${txHash}`);
+      playSound('approved');
+    },
+
+    async 'fund-and-assign'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      if (!flags.assignments) { console.error('--assignments "worker:amount:hours,..." required'); process.exit(1); }
+
+      const assignments = flags.assignments.split(',').map(a => {
+        const [worker, amount, hours] = a.trim().split(':');
+        return { worker, amount: parseFloat(amount), deadlineHours: parseInt(hours || '24') };
+      });
+
+      const { fundAndAssign } = await import('./src/swarm-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.swarmEscrow?.address;
+      if (!contractAddr) { console.error('SwarmEscrow not configured.'); process.exit(1); }
+
+      const totalUSDC = assignments.reduce((s, a) => s + a.amount, 0).toFixed(2);
+      await checkGuard(config, { to: contractAddr, usdcAmount: totalUSDC, action: 'fundAndAssign' });
+      console.log(`Funding task with ${assignments.length} milestone assignments, total $${totalUSDC} USDC...`);
+      const { txHash, totalAmount } = await fundAndAssign(wallet, contractAddr, {
+        taskId: flags['task-id'],
+        assignments,
+      });
+      console.log(`Funded and assigned: ${txHash}`);
+      console.log(`Total locked: $${totalAmount} USDC`);
+      playSound('escrow-sealed');
+    },
+
+    async 'set-coordinator'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      if (!flags.coordinator) { console.error('--coordinator required'); process.exit(1); }
+
+      const { setCoordinator } = await import('./src/swarm-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.swarmEscrow?.address;
+      if (!contractAddr) { console.error('SwarmEscrow not configured.'); process.exit(1); }
+
+      const { txHash } = await setCoordinator(wallet, contractAddr, {
+        taskId: flags['task-id'],
+        coordinator: flags.coordinator,
+      });
+      console.log(`Coordinator set: ${txHash}`);
+    },
+
+    async 'release-milestone'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+      if (flags.index === undefined) { console.error('--index required'); process.exit(1); }
+
+      const { releaseSwarmMilestone } = await import('./src/swarm-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.swarmEscrow?.address;
+      if (!contractAddr) { console.error('SwarmEscrow not configured.'); process.exit(1); }
+
+      await checkGuard(config, { to: contractAddr, action: 'releaseSwarmMilestone' });
+      console.log(`Releasing swarm milestone ${flags.index}...`);
+      const { txHash } = await releaseSwarmMilestone(wallet, contractAddr, flags['task-id'], parseInt(flags.index));
+      console.log(`Released: ${txHash}`); playSound('payment-released');
+    },
+
+    async 'cancel-task'(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+
+      const { cancelSwarmTask } = await import('./src/swarm-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.swarmEscrow?.address;
+      if (!contractAddr) { console.error('SwarmEscrow not configured.'); process.exit(1); }
+
+      const { txHash } = await cancelSwarmTask(wallet, contractAddr, flags['task-id']);
+      console.log(`Task cancelled, bonds refunded: ${txHash}`);
+    },
+
+    async status(config, flags) {
+      if (!flags['task-id']) { console.error('--task-id required'); process.exit(1); }
+
+      const { getSwarmTaskStatus } = await import('./src/swarm-escrow.js');
+      const wallet = await getWallet(config);
+      const contractAddr = config.swarmEscrow?.address;
+      if (!contractAddr) { console.error('SwarmEscrow not configured.'); process.exit(1); }
+
+      const s = await getSwarmTaskStatus(wallet, contractAddr, flags['task-id']);
+      if (!s) { console.log('No swarm task found.'); return; }
+
+      console.log(`Swarm task: ${flags['task-id']}`);
+      console.log(`  Status: ${s.status}`);
+      console.log(`  Requestor: ${s.requestor}`);
+      console.log(`  Budget: $${s.totalBudget} USDC`);
+      console.log(`  Bond: $${s.bondAmount} USDC`);
+      console.log(`  Bid deadline: ${new Date(s.bidDeadline * 1000).toISOString()}`);
+      if (s.coordinator) console.log(`  Coordinator: ${s.coordinator}`);
+      console.log(`  Milestones: ${s.releasedCount}/${s.milestoneCount} released\n`);
+
+      if (s.bids.length) {
+        console.log('  Bids:');
+        for (const b of s.bids) {
+          const status = b.accepted ? '✅ accepted' : b.refunded ? '↩ refunded' : '⏳ pending';
+          console.log(`    ${b.worker.slice(0, 10)}... $${b.price} [${status}]`);
+        }
+        console.log();
+      }
+
+      for (const m of s.milestones) {
+        const workerStr = m.worker === '0x0000000000000000000000000000000000000000' ? 'unassigned' : m.worker.slice(0, 10) + '...';
+        console.log(`  [${m.index}] $${m.amount} → ${workerStr} — ${m.status}`);
+      }
+    },
+  },
+
   // ─── Worker Commands ───
   worker: {
     async start(config, flags) {
@@ -1577,6 +1745,21 @@ Commands:
   wallet guard-set --max-tx <usdc> [--max-daily <usdc>] [--max-hourly <n>] [--mode <mode>]
                                   Update wallet guard settings
   wallet audit-log [--limit <n>]  Show recent transaction audit log
+
+  swarm create-task --task-id <id> --budget <usdc> --milestones <count> [--bid-deadline <hours>] [--bond <usdc>]
+                                  Create multi-worker task (opens for bidding)
+  swarm bid --task-id <id> --price <usdc>
+                                  Place a bid on a task (deposits bond if required)
+  swarm accept-bid --task-id <id> --worker <addr>
+                                  Accept a worker's bid
+  swarm fund-and-assign --task-id <id> --assignments "worker:amount:hours,..."
+                                  Fund escrow and assign milestones to accepted workers
+  swarm set-coordinator --task-id <id> --coordinator <addr>
+                                  Designate a coordinator for the task
+  swarm release-milestone --task-id <id> --index <n>
+                                  Release a milestone to its assigned worker
+  swarm cancel-task --task-id <id>  Cancel task during bidding (refunds all bonds)
+  swarm status --task-id <id>     Full task status (bids, milestones, workers)
   `);
   process.exit(0);
 }

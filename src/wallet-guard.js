@@ -35,6 +35,7 @@ const DEFAULT_GUARD = {
     'BoardRegistryV2': '0xf64B21Ce518ab025208662Da001a3F61D3AcB390',
     'USDC': '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     'SwapRouter': '0x2626664c2603336E57B271c5C0b26F421741e481',
+    'SwarmEscrow': '0xCd8e54f26a81843Ed0fC53c283f34b53444cdb59',
   },
 
   // Mode: 'full' | 'readOnly' | 'spendOnly'
