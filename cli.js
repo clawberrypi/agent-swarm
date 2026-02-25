@@ -17,6 +17,33 @@ import * as dashState from './src/state.js';
 // ─── Sounds ───
 import { playSound, playSoundSync, setSoundsEnabled } from './src/sounds.js';
 
+// ─── Guard Check (gates all on-chain transactions) ───
+
+async function checkGuard(config, { to, usdcAmount, action }) {
+  const guardPath = join(dirname(CONFIG_PATH), '.wallet-guard.json');
+  if (!existsSync(guardPath)) return; // no guard = no check
+  const { guardWallet } = await import('./src/wallet-guard.js');
+  const wallet = await getWalletLazy(config);
+  const guarded = guardWallet(wallet, { workdir: dirname(CONFIG_PATH) });
+  const result = guarded.checkGuardrails({ to, usdcAmount, action });
+  if (!result.allowed) {
+    playSound('blocked');
+    console.error(`🛡️  BLOCKED by wallet guard: ${result.reason}`);
+    process.exit(1);
+  }
+  playSound('approved');
+  guarded.logTransaction({ to, usdcAmount, action, allowed: true, reason: result.reason });
+}
+
+// Lazy wallet loader (avoids circular with getWallet which may not be defined yet)
+let _walletCache = null;
+async function getWalletLazy(config) {
+  if (_walletCache) return _walletCache;
+  const { loadWallet } = await import('./src/wallet.js');
+  _walletCache = loadWallet(config.wallet.privateKey);
+  return _walletCache;
+}
+
 // ─── Config ───
 
 function loadConfig() {
@@ -150,6 +177,15 @@ const commands = {
         escrow: {
           address: '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f',
           defaultDeadlineHours: 24,
+        },
+        milestoneEscrow: {
+          address: '0x7334DfF91ddE131e587d22Cb85F4184833340F6f',
+        },
+        staking: {
+          address: '0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488',
+        },
+        verification: {
+          registry: '0x22536E4C3A221dA3C42F02469DB3183E28fF7A74',
         },
         xmtp: { env: 'production' },
         network: {
@@ -989,7 +1025,10 @@ const commands = {
         process.exit(1);
       }
 
-      console.log(`Creating milestone escrow: ${milestones.length} milestones, total $${milestones.reduce((s, m) => s + m.amount, 0).toFixed(2)} USDC`);
+      const totalUSDC = milestones.reduce((s, m) => s + m.amount, 0).toFixed(2);
+      await checkGuard(config, { to: contractAddr, usdcAmount: totalUSDC, action: 'createMilestoneEscrow' });
+      console.log(`Creating milestone escrow: ${milestones.length} milestones, total $${totalUSDC} USDC`);
+      playSound('escrow-sealed');
       const { txHash, totalAmount } = await createMilestoneEscrow(wallet, contractAddr, {
         taskId: flags['task-id'],
         worker: flags.worker,
@@ -1008,6 +1047,7 @@ const commands = {
       const contractAddr = config.milestoneEscrow?.address;
       if (!contractAddr) { console.error('TaskEscrowV3 not configured.'); process.exit(1); }
 
+      await checkGuard(config, { to: contractAddr, action: 'releaseMilestone' });
       console.log(`Releasing milestone ${flags.index}...`);
       const { txHash } = await releaseMilestone(wallet, contractAddr, flags['task-id'], parseInt(flags.index));
       console.log(`Released: ${txHash}`); playSound('payment-released');
@@ -1320,6 +1360,7 @@ const commands = {
         process.exit(1);
       }
 
+      await checkGuard(config, { to: contractAddr, usdcAmount: flags.amount, action: 'stake' });
       console.log(`Depositing $${flags.amount} USDC stake...`);
       const { txHash } = await depositStake(wallet, contractAddr, flags.amount);
       console.log(`Staked: ${txHash}`); playSound('stake-locked');
@@ -1333,6 +1374,7 @@ const commands = {
       const contractAddr = config.staking?.address;
       if (!contractAddr) { console.error('WorkerStake not configured.'); process.exit(1); }
 
+      await checkGuard(config, { to: contractAddr, usdcAmount: flags.amount, action: 'unstake' });
       console.log(`Withdrawing $${flags.amount} USDC stake...`);
       const { txHash } = await withdrawStake(wallet, contractAddr, flags.amount);
       console.log(`Withdrawn: ${txHash}`); playSound('unstaked');

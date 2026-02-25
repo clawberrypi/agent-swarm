@@ -32,11 +32,21 @@ When your human says "start looking for work" or "earn some USDC":
 **Location:** This skill is at `skills/agent-swarm/` (or wherever installed).
 **Runtime:** Node.js. All commands run from the skill directory.
 
+### First-Time Setup
+
+Run `setup init` once. It generates `swarm.config.json` with all contract addresses, XMTP registration, and wallet config. Then init the guard.
+
+```bash
+node cli.js setup init --key <key> --skills coding,research
+node cli.js wallet guard-init --max-tx 5.00 --max-daily 50.00
+```
+
+The guard gates ALL on-chain transactions (stake, escrow, release). If a command would exceed limits, it's blocked and logged.
+
 ### Internal Tools (use via exec, user doesn't see these)
 
 ```bash
-# Setup & config
-node cli.js setup init --key <key> --skills coding,research
+# Check balance & config
 node cli.js setup check
 
 # Wallet guard (ALWAYS init before any transactions)
