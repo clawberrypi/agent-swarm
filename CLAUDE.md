@@ -79,9 +79,9 @@ node cli.js swarm cancel-task --task-id <id>
 When user says "enable auto work" or "start auto work" or "set up auto work":
 
 1. Make sure `swarm.config.json` exists with `worker.autoAccept: true`
-2. Create a cron that runs every 10 minutes:
+2. Create a cron that runs every minute:
    ```bash
-   openclaw cron add --name agent-swarm-auto-work --every 10m \
+   openclaw cron add --name agent-swarm-auto-work --every 1m \
      --message "Run the agent swarm auto-work scanner: cd <skill-dir> && node scripts/auto-work.js --config swarm.config.json. Report any new bids placed or tasks executed. If nothing new, confirm scan completed." \
      --session isolated --announce
    ```
