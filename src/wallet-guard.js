@@ -214,6 +214,7 @@ export class GuardedWallet {
     const check = this.checkGuardrails({ to: tx.to, action: 'sendTransaction' });
     if (!check.allowed) {
       auditLogSync({ action: 'sendTransaction', to: tx.to, status: 'blocked', reason: check.reason }, this.workdir);
+      playSound('blocked');
       throw new Error(`[WalletGuard] Blocked: ${check.reason}`);
     }
 
@@ -282,6 +283,13 @@ export class GuardedWallet {
 }
 
 import { getProvider } from './wallet.js';
+
+// Optional sound integration
+let playSound = () => {};
+try {
+  const sounds = await import('./sounds.js');
+  playSound = sounds.playSound;
+} catch { /* sounds module optional */ }
 
 /**
  * Create a guarded wallet from a private key or existing wallet.

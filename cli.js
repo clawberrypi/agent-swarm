@@ -14,6 +14,9 @@ const TASK_LOG_PATH = join(__dirname, 'tasks.json');
 // ─── Dashboard State ───
 import * as dashState from './src/state.js';
 
+// ─── Sounds ───
+import { playSound, playSoundSync, setSoundsEnabled } from './src/sounds.js';
+
 // ─── Config ───
 
 function loadConfig() {
@@ -710,7 +713,7 @@ const commands = {
         amount,
         deadline,
       });
-      console.log(`Escrow created: ${txHash}`);
+      console.log(`Escrow created: ${txHash}`); playSound('escrow-sealed');
 
       // 2. Create private XMTP group with worker
       const { createSwarmGroup, sendProtocolMessage } = await import('./src/agent.js');
@@ -886,7 +889,7 @@ const commands = {
       const escrowAddr = config.escrow?.address || '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f';
       console.log('Releasing escrow...');
       const { txHash } = await releaseEscrow(wallet, escrowAddr, flags['task-id']);
-      console.log(`Released: ${txHash}`);
+      console.log(`Released: ${txHash}`); playSound('payment-released');
 
       // Update dashboard + local log
       dashState.updateEscrow(flags['task-id'], 'released', txHash);
@@ -1007,7 +1010,7 @@ const commands = {
 
       console.log(`Releasing milestone ${flags.index}...`);
       const { txHash } = await releaseMilestone(wallet, contractAddr, flags['task-id'], parseInt(flags.index));
-      console.log(`Released: ${txHash}`);
+      console.log(`Released: ${txHash}`); playSound('payment-released');
     },
 
     async 'milestone-status'(config, flags) {
@@ -1319,7 +1322,7 @@ const commands = {
 
       console.log(`Depositing $${flags.amount} USDC stake...`);
       const { txHash } = await depositStake(wallet, contractAddr, flags.amount);
-      console.log(`Staked: ${txHash}`);
+      console.log(`Staked: ${txHash}`); playSound('stake-locked');
       console.log('Your stake signals quality commitment to requestors.');
     },
 
@@ -1332,7 +1335,7 @@ const commands = {
 
       console.log(`Withdrawing $${flags.amount} USDC stake...`);
       const { txHash } = await withdrawStake(wallet, contractAddr, flags.amount);
-      console.log(`Withdrawn: ${txHash}`);
+      console.log(`Withdrawn: ${txHash}`); playSound('unstaked');
     },
 
     async 'stake-status'(config, flags) {
@@ -1377,6 +1380,7 @@ const commands = {
       console.log(`  Daily limit: ${guard.maxDailySpend} USDC`);
       console.log(`  Hourly tx limit: ${guard.maxTransactionsPerHour}`);
       console.log(`  Config saved to: ${join(workdir, '.wallet-guard.json')}`);
+      playSound('guard-active');
     },
 
     async 'guard-allow'(config, flags) {
@@ -1454,6 +1458,11 @@ const commands = {
 const args = process.argv.slice(2);
 const { positional, flags } = parseArgs(args);
 const [command, subcommand] = positional;
+
+// --silent disables sound bites
+if (flags.silent || flags.quiet || process.env.SWARM_SILENT) {
+  setSoundsEnabled(false);
+}
 
 if (!command || !subcommand) {
   console.log(`
