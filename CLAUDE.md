@@ -64,12 +64,17 @@ For complex tasks, use milestone-based escrow with multiple payment phases:
 # Create milestone escrow (amount:deadline pairs)
 node cli.js escrow create-milestone --task-id <id> --worker 0xAddr --milestones "0.50:24h,0.50:48h"
 
+# Set acceptance criteria (required before verification — registers you as requestor)
+node cli.js escrow set-criteria --task-id <id> --criteria "Must pass all unit tests"
+
 # Release milestones as work progresses
 node cli.js escrow release-milestone --task-id <id> --index 0
 
 # Check milestone status
 node cli.js escrow milestone-status --task-id <id>
 ```
+
+**Important**: Call `set-criteria` before the worker submits their deliverable. This registers your address as the requestor on VerificationRegistryV2, which is required for you to verify the deliverable later.
 
 ### Worker Staking
 
