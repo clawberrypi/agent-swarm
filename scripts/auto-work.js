@@ -17,7 +17,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const SKILL_DIR = join(__dirname, '..');
-const CLI_DIR = join(SKILL_DIR, 'skills', 'agent-swarm');
+// Detect layout: flat clone (src/ at root) vs nested ClawHub install (skills/agent-swarm/src/)
+const CLI_DIR = existsSync(join(SKILL_DIR, 'src', 'agent.js'))
+  ? SKILL_DIR
+  : join(SKILL_DIR, 'skills', 'agent-swarm');
 const STATE_PATH = join(SKILL_DIR, 'data', 'auto-work-state.json');
 
 // ─── Parse args ───
