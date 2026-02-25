@@ -94,7 +94,8 @@ async function run() {
 
     const { createSwarmAgent } = await import(join(SKILL_DIR, 'src/agent.js'));
     const dbName = config.xmtp?.dbPath || `.xmtp-${wallet.address.slice(2, 10).toLowerCase()}`;
-    const dbPath = join(SKILL_DIR, dbName);
+    // Support absolute paths (e.g. from cross-directory configs)
+    const dbPath = dbName.startsWith('/') ? dbName : join(SKILL_DIR, dbName);
 
     const { agent } = await createSwarmAgent(config.wallet.privateKey, {
       env: 'production',
