@@ -244,6 +244,7 @@
 
     <div class="tabs">
       <button class="tab active" data-tab="boards">Boards</button>
+      <button class="tab" data-tab="jobs">Jobs</button>
       <button class="tab" data-tab="escrows">Escrows</button>
       <button class="tab" data-tab="staking">Staking</button>
       <button class="tab" data-tab="contracts">Contracts</button>
@@ -252,6 +253,19 @@
     <!-- Boards Tab -->
     <div class="tab-content active" id="tab-boards">
       <div id="boards"><div class="loading">loading from Base...</div></div>
+    </div>
+
+    <!-- Jobs Tab -->
+    <div class="tab-content" id="tab-jobs">
+      <div class="section-header">
+        <div id="job-filters" style="display: flex; gap: 6px;">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="bidding">Bidding</button>
+          <button class="filter-btn" data-filter="active">Active</button>
+          <button class="filter-btn" data-filter="completed">Completed</button>
+        </div>
+      </div>
+      <div id="jobs-list"><div class="loading">loading from Base...</div></div>
     </div>
 
     <!-- Escrows Tab -->
@@ -698,6 +712,139 @@ async function loadStaking(provider) {
 }
 
 // ─── Contracts Tab ───
+// ─── Jobs (SwarmEscrow) ───
+const TASK_STATUS_NAMES = ['Bidding', 'Active', 'Completed', 'Cancelled'];
+const TASK_STATUS_CLASS = ['bidding', 'active', 'completed', 'cancelled'];
+const SWARM_MS_STATUS = ['Unassigned', 'Active', 'Released', 'Disputed', 'Refunded'];
+let allJobs = [];
+
+async function loadJobs(provider) {
+  const swarm = new ethers.Contract(SWARM_ESCROW, SWARM_ESCROW_ABI, provider);
+  const filter = swarm.filters.TaskCreated();
+  const events = await swarm.queryFilter(filter, DEPLOY_BLOCK);
+
+  const jobs = [];
+  for (const ev of events) {
+    const taskId = ev.args[0];
+    try {
+      const [requestor, totalBudget, milestoneCount, releasedCount, bidDeadline, bondAmount, status, coordinator, exists] =
+        await swarm.getTask(taskId);
+      if (!exists) continue;
+
+      // Get bids
+      const bidCount = Number(await swarm.getBidCount(taskId));
+      const bids = [];
+      for (let i = 0; i < bidCount; i++) {
+        const [worker, price, bonded, accepted, refunded] = await swarm.getBid(taskId, i);
+        bids.push({ worker, price, bonded, accepted, refunded });
+      }
+
+      // Get milestones
+      const ms = [];
+      for (let i = 0; i < Number(milestoneCount); i++) {
+        const [worker, amount, deadline, mStatus, disputeTs] = await swarm.getMilestone(taskId, i);
+        ms.push({ worker, amount, deadline: Number(deadline), status: Number(mStatus) });
+      }
+
+      jobs.push({
+        taskId,
+        requestor,
+        totalBudget,
+        milestoneCount: Number(milestoneCount),
+        releasedCount: Number(releasedCount),
+        bidDeadline: Number(bidDeadline),
+        bondAmount,
+        status: Number(status),
+        coordinator,
+        bids,
+        milestones: ms,
+        block: ev.blockNumber,
+      });
+    } catch (e) {
+      console.warn('Failed to load task', taskId, e.message);
+    }
+  }
+
+  allJobs = jobs;
+  renderJobs('all');
+}
+
+function renderJobs(filter) {
+  let jobs = allJobs;
+  if (filter === 'bidding') jobs = jobs.filter(j => j.status === 0);
+  else if (filter === 'active') jobs = jobs.filter(j => j.status === 1);
+  else if (filter === 'completed') jobs = jobs.filter(j => j.status === 2);
+
+  if (!jobs.length) {
+    document.getElementById('jobs-list').innerHTML = '<div class="loading">no jobs found</div>';
+    return;
+  }
+
+  document.getElementById('jobs-list').innerHTML = jobs.map(j => {
+    const statusName = TASK_STATUS_NAMES[j.status] || 'Unknown';
+    const statusClass = TASK_STATUS_CLASS[j.status] || '';
+    const now = Math.floor(Date.now() / 1000);
+    const bidOpen = j.status === 0 && j.bidDeadline > now;
+    const timeLeft = bidOpen ? (() => {
+      const d = j.bidDeadline - now;
+      if (d > 3600) return Math.floor(d / 3600) + 'h left';
+      return Math.floor(d / 60) + 'm left';
+    })() : '';
+
+    const msHtml = j.milestones.map((m, i) => {
+      const workerStr = m.worker === ethers.ZeroAddress ? 'unassigned' : short(m.worker);
+      const mStatusName = SWARM_MS_STATUS[m.status] || '?';
+      const amt = fmtUSDC(m.amount);
+      return `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:10px;">
+        <span style="color:#555;">milestone ${i}</span>
+        <span style="color:#777;">${workerStr}</span>
+        <span>$${amt}</span>
+        <span class="${MS_CLASS[m.status] || ''}" style="font-size:9px;">${mStatusName}</span>
+      </div>`;
+    }).join('');
+
+    const bidsHtml = j.bids.length ? `<div style="margin-top:6px;font-size:10px;color:#555;">
+      ${j.bids.length} bid${j.bids.length > 1 ? 's' : ''}: ${j.bids.map(b => 
+        `${short(b.worker)} $${fmtUSDC(b.price)} ${b.accepted ? '<span style="color:#4ade80;">✓</span>' : ''}`
+      ).join(', ')}
+    </div>` : '';
+
+    const coordHtml = j.coordinator !== ethers.ZeroAddress ? 
+      `<div style="font-size:10px;color:#555;margin-top:4px;">coordinator: ${short(j.coordinator)}</div>` : '';
+
+    return `<div class="escrow-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:10px;color:#777;">task ${j.taskId.slice(0, 10)}...</span>
+        <span class="status-badge ${statusClass}" style="font-size:9px;padding:2px 6px;border-radius:3px;
+          background:${j.status === 0 ? '#1a3a1a' : j.status === 1 ? '#1a2a3a' : j.status === 2 ? '#2a2a2a' : '#3a1a1a'};
+          color:${j.status === 0 ? '#4ade80' : j.status === 1 ? '#60a5fa' : j.status === 2 ? '#888' : '#f87171'};">
+          ${statusName}${bidOpen ? ' · ' + timeLeft : ''}
+        </span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:10px;color:#555;">requestor: ${bsLink(j.requestor)}</span>
+        <span style="font-size:11px;color:#ccc;">$${fmtUSDC(j.totalBudget)} USDC</span>
+      </div>
+      <div style="font-size:10px;color:#555;margin-bottom:4px;">
+        ${j.milestoneCount} milestones · ${j.releasedCount} released
+        ${j.bondAmount > 0n ? ' · bond: $' + fmtUSDC(j.bondAmount) : ''}
+      </div>
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;margin-top:6px;">
+        ${msHtml}
+      </div>
+      ${bidsHtml}
+      ${coordHtml}
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('job-filters')?.addEventListener('click', e => {
+  if (!e.target.classList.contains('filter-btn')) return;
+  document.querySelectorAll('#job-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  renderJobs(e.target.dataset.filter);
+});
+
 function renderContracts() {
   const contracts = [
     { name: 'SwarmEscrow', addr: SWARM_ESCROW, desc: 'Multi-worker bid-lock escrow with bonds and coordinators (v4)', verified: true, isNew: true },
@@ -744,6 +891,7 @@ async function init() {
         loadEscrows(provider),
         loadBoards(provider),
         loadStaking(provider),
+        loadJobs(provider),
       ]);
       return;
     } catch (err) {
