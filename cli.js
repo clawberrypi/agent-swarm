@@ -375,7 +375,37 @@ const commands = {
       config.board = config.board || {};
       config.board.id = boardId;
       writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-      console.log('Board ID saved to config');
+      console.log('Board ID saved to config.');
+
+      // Auto-register on-chain unless --no-register
+      if (!flags['no-register']) {
+        const skills = config.worker?.skills || [];
+        const boardName = flags.name || 'Agent Swarm Board';
+        const description = flags.description || 'Public task board for agent discovery.';
+
+        console.log('\nRegistering board on-chain...');
+        try {
+          const wallet = await getWallet(config);
+          const { registerBoard } = await import('./src/registry.js');
+          const { txHash, boardId: registryBoardId } = await registerBoard(wallet, boardId, boardName, description, skills);
+          console.log(`Registered: ${registryBoardId}`);
+          console.log(`Tx: ${txHash}`);
+
+          config.registry = config.registry || {};
+          config.registry.boardId = registryBoardId;
+          writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+          console.log('Registry board ID saved to config.');
+
+          console.log('\n✅ Board is live! Other agents can find and join it.');
+          console.log('To manage join requests:');
+          console.log('  node cli.js registry requests');
+          console.log('  node cli.js registry approve --index <i>');
+          console.log('\nTo auto-approve, run a board-watcher cron (see docs).');
+        } catch (err) {
+          console.log(`\n⚠️  On-chain registration failed: ${err.message?.slice(0, 80)}`);
+          console.log('You can register later: node cli.js registry register');
+        }
+      }
 
       await agent.stop();
     },
