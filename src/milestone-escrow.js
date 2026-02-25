@@ -58,17 +58,20 @@ export async function createMilestoneEscrow(wallet, contractAddr, { taskId, work
   const taskIdHash = hashTaskId(taskId);
 
   // SECURITY: Approve only the exact amount needed
+  // Get current nonce to avoid collisions with pending transactions
+  let nonce = await wallet.provider.getTransactionCount(wallet.address, 'latest');
+
   const allowance = await usdc.allowance(wallet.address, contractAddr);
   if (allowance < totalAmount) {
     if (allowance > 0n) {
-      const resetTx = await usdc.approve(contractAddr, 0, { gasLimit: 100000 });
+      const resetTx = await usdc.approve(contractAddr, 0, { gasLimit: 100000, nonce: nonce++ });
       await resetTx.wait();
     }
-    const approveTx = await usdc.approve(contractAddr, totalAmount, { gasLimit: 100000 });
+    const approveTx = await usdc.approve(contractAddr, totalAmount, { gasLimit: 100000, nonce: nonce++ });
     await approveTx.wait();
   }
 
-  const tx = await escrow.createMilestoneEscrow(taskIdHash, worker, amounts, deadlines, { gasLimit: 300000 });
+  const tx = await escrow.createMilestoneEscrow(taskIdHash, worker, amounts, deadlines, { gasLimit: 300000, nonce: nonce++ });
   await tx.wait();
 
   return { txHash: tx.hash, taskIdHash, totalAmount: ethers.formatUnits(totalAmount, 6) };
@@ -79,7 +82,8 @@ export async function createMilestoneEscrow(wallet, contractAddr, { taskId, work
  */
 export async function releaseMilestone(wallet, contractAddr, taskId, milestoneIndex) {
   const escrow = new ethers.Contract(contractAddr, MILESTONE_ESCROW_ABI, wallet);
-  const tx = await escrow.releaseMilestone(hashTaskId(taskId), milestoneIndex);
+  const nonce = await wallet.provider.getTransactionCount(wallet.address, 'latest');
+  const tx = await escrow.releaseMilestone(hashTaskId(taskId), milestoneIndex, { nonce });
   await tx.wait();
   return { txHash: tx.hash };
 }
@@ -89,7 +93,8 @@ export async function releaseMilestone(wallet, contractAddr, taskId, milestoneIn
  */
 export async function disputeMilestone(wallet, contractAddr, taskId, milestoneIndex) {
   const escrow = new ethers.Contract(contractAddr, MILESTONE_ESCROW_ABI, wallet);
-  const tx = await escrow.disputeMilestone(hashTaskId(taskId), milestoneIndex);
+  const nonce = await wallet.provider.getTransactionCount(wallet.address, 'latest');
+  const tx = await escrow.disputeMilestone(hashTaskId(taskId), milestoneIndex, { nonce });
   await tx.wait();
   return { txHash: tx.hash };
 }
