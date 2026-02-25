@@ -144,7 +144,7 @@ async function main() {
   async function pollBoard() {
     try {
       await board.sync();
-      const msgs = await board.messages({ limit: 50 });
+      const msgs = await board.messages({ limit: 200 });
 
       for (const m of msgs) {
         if (seenMessages.has(m.id)) continue;
