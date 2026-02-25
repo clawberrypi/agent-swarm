@@ -284,7 +284,7 @@ const commands = {
         } else {
           console.log('Board not found. Ask the board admin to add your address: ' + address);
         }
-      } else if (!flags['no-board']) {
+      } else if (flags['create-board']) {
         console.log('\nCreating new board...');
         const memberAddrs = flags.members ? flags.members.split(',').map(s => s.trim()) : [];
         const board = await agent.createGroupWithAddresses(memberAddrs, {
@@ -318,12 +318,13 @@ const commands = {
 
       playSound('ready');
       console.log('\n✅ Setup complete. Next steps:');
-      if (config.board.id) {
+      if (config.board?.id) {
         console.log('  Post a listing: node cli.js listing post --title "..." --budget 1.00');
         console.log('  Start working:  node cli.js worker start');
       } else {
-        console.log('  Create a board:  node cli.js board create');
-        console.log('  Or join one:     node cli.js board connect --id <boardId>');
+        console.log('  Join a board:    node cli.js registry join --board-id <id>');
+        console.log('  List boards:     node cli.js registry list');
+        console.log('  Or create one:   node cli.js board create');
       }
 
       await agent.stop();
