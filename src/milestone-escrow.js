@@ -61,14 +61,14 @@ export async function createMilestoneEscrow(wallet, contractAddr, { taskId, work
   const allowance = await usdc.allowance(wallet.address, contractAddr);
   if (allowance < totalAmount) {
     if (allowance > 0n) {
-      const resetTx = await usdc.approve(contractAddr, 0);
+      const resetTx = await usdc.approve(contractAddr, 0, { gasLimit: 100000 });
       await resetTx.wait();
     }
-    const approveTx = await usdc.approve(contractAddr, totalAmount);
+    const approveTx = await usdc.approve(contractAddr, totalAmount, { gasLimit: 100000 });
     await approveTx.wait();
   }
 
-  const tx = await escrow.createMilestoneEscrow(taskIdHash, worker, amounts, deadlines);
+  const tx = await escrow.createMilestoneEscrow(taskIdHash, worker, amounts, deadlines, { gasLimit: 300000 });
   await tx.wait();
 
   return { txHash: tx.hash, taskIdHash, totalAmount: ethers.formatUnits(totalAmount, 6) };

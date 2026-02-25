@@ -46,18 +46,18 @@ export async function depositStake(wallet, contractAddr, amount) {
   const usdc = new ethers.Contract(usdcAddr, USDC_ABI, wallet);
   const amountRaw = ethers.parseUnits(amount.toString(), 6);
 
-  // SECURITY: Approve only the exact amount
+  // SECURITY: Approve only the exact amount needed
   const allowance = await usdc.allowance(wallet.address, contractAddr);
   if (allowance < amountRaw) {
     if (allowance > 0n) {
-      const resetTx = await usdc.approve(contractAddr, 0);
+      const resetTx = await usdc.approve(contractAddr, 0, { gasLimit: 100000 });
       await resetTx.wait();
     }
-    const approveTx = await usdc.approve(contractAddr, amountRaw);
+    const approveTx = await usdc.approve(contractAddr, amountRaw, { gasLimit: 100000 });
     await approveTx.wait();
   }
 
-  const tx = await stake.deposit(amountRaw);
+  const tx = await stake.deposit(amountRaw, { gasLimit: 200000 });
   await tx.wait();
   return { txHash: tx.hash };
 }

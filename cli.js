@@ -20,19 +20,30 @@ import { playSound, playSoundSync, setSoundsEnabled } from './src/sounds.js';
 // ─── Guard Check (gates all on-chain transactions) ───
 
 async function checkGuard(config, { to, usdcAmount, action }) {
-  const guardPath = join(dirname(CONFIG_PATH), '.wallet-guard.json');
+  const workdir = dirname(CONFIG_PATH);
+  const guardPath = join(workdir, '.wallet-guard.json');
   if (!existsSync(guardPath)) return; // no guard = no check
   const { guardWallet } = await import('./src/wallet-guard.js');
+  const { appendFileSync: appendLog } = await import('fs');
   const wallet = await getWalletLazy(config);
-  const guarded = guardWallet(wallet, { workdir: dirname(CONFIG_PATH) });
+  const guarded = guardWallet(wallet, { workdir });
   const result = guarded.checkGuardrails({ to, usdcAmount, action });
+
+  // Audit log every check
+  const logLine = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    action, to, usdcAmount,
+    allowed: result.allowed,
+    reason: result.reason,
+  }) + '\n';
+  try { appendLog(join(workdir, '.wallet-audit.log'), logLine); } catch {}
+
   if (!result.allowed) {
     playSound('blocked');
     console.error(`🛡️  BLOCKED by wallet guard: ${result.reason}`);
     process.exit(1);
   }
   playSound('approved');
-  guarded.logTransaction({ to, usdcAmount, action, allowed: true, reason: result.reason });
 }
 
 // Lazy wallet loader (avoids circular with getWallet which may not be defined yet)
