@@ -29,7 +29,7 @@ const TASK_STATUS = ['Bidding', 'Active', 'Completed', 'Cancelled'];
 const MILESTONE_STATUS = ['Unassigned', 'Active', 'Released', 'Disputed', 'Refunded'];
 
 // Deployed to Base mainnet 2026-02-24
-let DEFAULT_SWARM_ESCROW = process.env.SWARM_ESCROW_ADDRESS || '0xCd8e54f26a81843Ed0fC53c283f34b53444cdb59';
+let DEFAULT_SWARM_ESCROW = process.env.SWARM_ESCROW_ADDRESS || '0x95c65065d5e70DF7Bff4224b580cFaDc7DaceAF3';
 
 export function getDefaultSwarmEscrowAddress() {
   return DEFAULT_SWARM_ESCROW;

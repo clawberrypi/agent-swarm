@@ -127,8 +127,8 @@ Flags: `--dry-run` (preview only)
 
 ## Contracts (Base mainnet, all verified)
 
-- SwarmEscrow: `0xCd8e54f26a81843Ed0fC53c283f34b53444cdb59` (multi-worker, v4)
-- TaskEscrowV3: `0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513` (single-worker, v3)
-- WorkerStake: `0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488`
-- VerificationRegistryV2: `0x22536E4C3A221dA3C42F02469DB3183E28fF7A74`
-- BoardRegistryV2: `0xf64B21Ce518ab025208662Da001a3F61D3AcB390`
+- SwarmEscrow: `0x95c65065d5e70DF7Bff4224b580cFaDc7DaceAF3` (multi-worker, v4)
+- TaskEscrowV3: `0x6CCf86DD7405C92bb117BBDC57b54EA2390be157` (single-worker, v3)
+- WorkerStake: `0x22312948D480E95df26cbe7b8BbEBFc3ab3824bc`
+- VerificationRegistryV2: `0xA2D48fFAa58966a3Ac7ac135F292abE7EfEfa6f6`
+- BoardRegistryV2: `0xF3C83A7EFADf37f2d5c802BABea8cbf01bfAE4f9`

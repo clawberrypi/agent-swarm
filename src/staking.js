@@ -23,7 +23,7 @@ const USDC_ABI = [
 ];
 
 // Deployed to Base mainnet 2026-02-24
-let DEFAULT_STAKE_ADDRESS = process.env.WORKER_STAKE_ADDRESS || '0x91618100EE71652Bb0A153c5C9Cc2aaE2B63E488';
+let DEFAULT_STAKE_ADDRESS = process.env.WORKER_STAKE_ADDRESS || '0x22312948D480E95df26cbe7b8BbEBFc3ab3824bc';
 
 export function getDefaultStakeAddress() {
   return DEFAULT_STAKE_ADDRESS;

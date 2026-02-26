@@ -199,7 +199,7 @@ import { createMilestoneEscrow, releaseMilestone, getEscrowStatus } from './src/
 import { loadWallet } from './src/wallet.js';
 
 const wallet = loadWallet(privateKey);
-const escrowAddr = '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513'; // TaskEscrowV3 on Base
+const escrowAddr = '0x6CCf86DD7405C92bb117BBDC57b54EA2390be157'; // TaskEscrowV3 on Base
 
 // Requestor locks USDC in milestone escrow
 await createMilestoneEscrow(wallet, escrowAddr, {

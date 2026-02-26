@@ -23,7 +23,7 @@ const USDC_ABI = [
 const STATUS_MAP = ['Active', 'Released', 'Disputed', 'Refunded'];
 
 // Deployed to Base mainnet 2026-02-24
-let DEFAULT_MILESTONE_ESCROW = process.env.MILESTONE_ESCROW_ADDRESS || '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513';
+let DEFAULT_MILESTONE_ESCROW = process.env.MILESTONE_ESCROW_ADDRESS || '0x6CCf86DD7405C92bb117BBDC57b54EA2390be157';
 
 export function getDefaultMilestoneEscrowAddress() {
   return DEFAULT_MILESTONE_ESCROW;

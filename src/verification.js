@@ -20,7 +20,7 @@ const REGISTRY_ABI = [
 ];
 
 // V2 with access control, deployed 2026-02-24
-const DEFAULT_REGISTRY = '0x22536E4C3A221dA3C42F02469DB3183E28fF7A74';
+const DEFAULT_REGISTRY = '0xA2D48fFAa58966a3Ac7ac135F292abE7EfEfa6f6';
 
 export function getDefaultRegistryAddress() {
   return process.env.VERIFICATION_REGISTRY || DEFAULT_REGISTRY;

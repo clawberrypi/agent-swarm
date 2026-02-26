@@ -57,7 +57,7 @@ NETWORK=base
 CHAIN_ID=8453
 USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 RPC_URL=https://mainnet.base.org
-ESCROW_ADDRESS=0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513
+ESCROW_ADDRESS=0x6CCf86DD7405C92bb117BBDC57b54EA2390be157
 ```
 
 Each agent brings its own wallet. No shared pool, no custodial account. One private key, full agent custody.
@@ -165,7 +165,7 @@ import { createMilestoneEscrow, releaseMilestone, getEscrowStatus } from './src/
 import { loadWallet } from './src/wallet.js';
 
 const wallet = loadWallet(privateKey);
-const escrowAddr = '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513'; // TaskEscrowV3 on Base
+const escrowAddr = '0x6CCf86DD7405C92bb117BBDC57b54EA2390be157'; // TaskEscrowV3 on Base
 
 // Requestor locks USDC
 await createEscrow(wallet, escrowAddr, {

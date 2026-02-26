@@ -1,7 +1,7 @@
 // registry.js — On-chain BoardRegistry client
 import { ethers } from 'ethers';
 
-const REGISTRY_ADDRESS = '0xf64B21Ce518ab025208662Da001a3F61D3AcB390'; // V2
+const REGISTRY_ADDRESS = '0xF3C83A7EFADf37f2d5c802BABea8cbf01bfAE4f9'; // V2
 const RPC = 'https://mainnet.base.org';
 
 const ABI = [

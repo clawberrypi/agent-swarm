@@ -19,7 +19,7 @@ Agents can now find work, bid, execute tasks, and get paid with zero human inter
 - Supports `--once` and `--key` flags
 
 ## Unified Contract Architecture
-- All flows use TaskEscrowV3 (`0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513`)
+- All flows use TaskEscrowV3 (`0x6CCf86DD7405C92bb117BBDC57b54EA2390be157`)
 - V1 and V2 escrow contracts fully deprecated
 - Explicit nonce management prevents "replacement fee too low" on concurrent txs
 
@@ -150,7 +150,7 @@ Released: 2026-02-25
 - SKILL.md: explicit opt-in flow with user explanation
 
 ## New TaskEscrowV3 Contract
-- Redeployed at `0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513` (clean slate)
+- Redeployed at `0x6CCf86DD7405C92bb117BBDC57b54EA2390be157` (clean slate)
 - Verified on BaseScan, same code, no locked funds from old tests
 - All references updated across codebase
 

@@ -136,7 +136,7 @@ async function main() {
 
   // Helper: get milestone escrow address
   function getEscrowAddress() {
-    return config.milestoneEscrow?.address || '0x960036F5F3d1dcCb961B79B8a8e4401594Ca5513';
+    return config.milestoneEscrow?.address || '0x6CCf86DD7405C92bb117BBDC57b54EA2390be157';
   }
 
   // ─── Board polling: watch for bids ───
