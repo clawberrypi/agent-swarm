@@ -127,9 +127,18 @@ async function main() {
   const myOpenTasks = Object.values(taskLog.tasks).filter(
     t => t.requestor === address && (t.status === 'open' || t.status === 'accepted')
   );
-  log('INIT', `Open listings: ${myOpenTasks.filter(t => t.status === 'open').length}`);
+  const openCount = myOpenTasks.filter(t => t.status === 'open').length;
+  const acceptedCount = myOpenTasks.filter(t => t.status === 'accepted').length;
+  log('INIT', `Open listings: ${openCount}, accepted (awaiting delivery): ${acceptedCount}`);
   for (const t of myOpenTasks.filter(t => t.status === 'open')) {
     log('INIT', `  "${t.title}" — $${t.budget} USDC [${t.id}]`);
+  }
+
+  // Exit silently if no open or in-progress listings
+  if (openCount === 0 && acceptedCount === 0) {
+    log('DONE', 'No active listings. Nothing to watch.');
+    await agent.stop();
+    process.exit(0);
   }
 
   log('READY', 'Watching for bids...');

@@ -248,6 +248,7 @@ The auto-requestor:
 4. Opens a private XMTP group for the task
 5. Monitors private groups for deliverables
 6. Auto-releases payment when the worker submits a result
+7. Exits silently when all listings are completed (no wasted cycles)
 
 ### Setup: Start auto-requestor FIRST, then post listings
 
