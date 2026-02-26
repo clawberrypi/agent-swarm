@@ -266,7 +266,7 @@ openclaw cron add \
   --name "agent-swarm-auto-requestor" \
   --every "1m" \
   --message "Run: cd <skill-dir> && node scripts/auto-requestor.js --config swarm.config.json --once" \
-  --session isolated --no-deliver
+  --session isolated --announce
 ```
 
 Late bidders are notified that the task was already assigned. The `--once` flag polls once and exits (cron-friendly).
