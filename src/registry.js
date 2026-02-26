@@ -58,6 +58,15 @@ export async function registerBoard(wallet, xmtpGroupId, name, description, skil
 
 export async function requestJoinBoard(wallet, boardId, xmtpAddress, skills) {
   const registry = getRegistry(wallet);
+  // Check if we already have a pending or approved request
+  const count = Number(await registry.getJoinRequestCount(boardId));
+  for (let i = 0; i < count; i++) {
+    const [agent, , , , approved, rejected] = await registry.getJoinRequest(boardId, i);
+    if (agent.toLowerCase() === wallet.address.toLowerCase()) {
+      if (approved) return { txHash: 'already-approved', alreadyApproved: true, index: i };
+      if (!rejected) return { txHash: 'already-pending', alreadyPending: true, index: i };
+    }
+  }
   const tx = await registry.requestJoin(boardId, xmtpAddress, skills);
   await tx.wait();
   return { txHash: tx.hash };

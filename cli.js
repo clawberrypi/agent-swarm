@@ -591,22 +591,43 @@ const commands = {
 
       const mySkills = config.worker?.skills || [];
       console.log(`Requesting to join with skills: ${mySkills.join(', ')}...`);
-      const { txHash } = await requestJoinBoard(wallet, boardId, wallet.address, mySkills);
-      console.log(`Join request submitted: ${txHash}`);
+      const result = await requestJoinBoard(wallet, boardId, wallet.address, mySkills);
+      if (result.alreadyApproved) {
+        console.log('Already approved! Connecting to board...');
+      } else if (result.alreadyPending) {
+        console.log('Join request already pending, waiting for approval...');
+      } else {
+        console.log(`Join request submitted: ${result.txHash}`);
+      }
 
       // Auto-poll for approval and connect to XMTP board
       if (!flags['no-wait']) {
-        console.log('\nWaiting for board owner to approve (auto-approved boards are instant)...');
         const maxWait = parseInt(flags['timeout'] || '180'); // 3 min default
         const pollInterval = 10; // seconds
-        let approved = false;
+        let approved = result.alreadyApproved || false;
 
-        // Find our request index
-        const reqCount = Number(await registry.getJoinRequestCount(boardId));
-        let ourIndex = reqCount - 1; // usually the last one
+        if (!approved) console.log('\nWaiting for board owner to approve (auto-approved boards are instant)...');
 
+        // Find our request index by scanning all requests
+        let ourIndex = -1;
         for (let elapsed = 0; elapsed < maxWait; elapsed += pollInterval) {
-          const [agent, , , , isApproved] = await registry.getJoinRequest(boardId, ourIndex);
+          const reqCount = Number(await registry.getJoinRequestCount(boardId));
+          // Find our request
+          if (ourIndex === -1) {
+            for (let i = reqCount - 1; i >= 0; i--) {
+              const [agent] = await registry.getJoinRequest(boardId, i);
+              if (agent.toLowerCase() === wallet.address.toLowerCase()) {
+                ourIndex = i;
+                break;
+              }
+            }
+          }
+          if (ourIndex === -1) {
+            process.stdout.write('.');
+            await new Promise(r => setTimeout(r, pollInterval * 1000));
+            continue;
+          }
+          const [, , , , isApproved] = await registry.getJoinRequest(boardId, ourIndex);
           if (isApproved) {
             approved = true;
             console.log('✅ Approved on-chain!');
