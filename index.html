@@ -316,14 +316,12 @@ const RPCS = [
 
 // ─── Contract Addresses ───
 const REGISTRY = '0xF3C83A7EFADf37f2d5c802BABea8cbf01bfAE4f9';
-const ESCROW_V2 = '0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f'; // deprecated — read-only for historical data
 const ESCROW_V3 = '0x6CCf86DD7405C92bb117BBDC57b54EA2390be157'; // primary single-worker escrow
 const WORKER_STAKE = '0x22312948D480E95df26cbe7b8BbEBFc3ab3824bc';
 const VERIFICATION_V2 = '0xA2D48fFAa58966a3Ac7ac135F292abE7EfEfa6f6'; // primary verification
-const VERIFICATION_V1 = '0x2120D4e0074e0a41762dF785f2c99086aB8bc51b'; // deprecated — read-only for historical data
 const SWARM_ESCROW = '0x95c65065d5e70DF7Bff4224b580cFaDc7DaceAF3'; // multi-worker escrow
 const MAIN_BOARD = '0x99ea722a7f7d9071cdd896455edaa0e9a4e10067cc426e3103f6d947041368ac';
-const DEPLOY_BLOCK = 42490000;
+const DEPLOY_BLOCK = 42644800; // v5 clean slate deployment block
 const USDC_DECIMALS = 6;
 
 // ─── ABIs ───
@@ -333,13 +331,6 @@ const REGISTRY_ABI = [
   'function getBoard(bytes32 boardId) view returns (address owner, string xmtpGroupId, string name, string description, string[] skills, uint256 memberCount, uint256 createdAt, bool active)',
   'function getJoinRequestCount(bytes32 boardId) view returns (uint256)',
   'function getJoinRequest(bytes32 boardId, uint256 index) view returns (address agent, string xmtpAddress, string[] skills, uint256 requestedAt, bool approved, bool rejected)',
-];
-
-const ESCROW_V2_ABI = [
-  'event EscrowCreated(bytes32 indexed taskId, address requestor, address worker, uint256 amount, uint256 deadline)',
-  'event EscrowReleased(bytes32 indexed taskId, address worker, uint256 amount)',
-  'event EscrowDisputed(bytes32 indexed taskId, address disputedBy)',
-  'event EscrowRefunded(bytes32 indexed taskId, address requestor, uint256 amount)',
 ];
 
 const ESCROW_V3_ABI = [
@@ -504,28 +495,14 @@ async function loadBoards(provider) {
 
 // ─── Escrows (V2 + V3) ───
 async function loadEscrows(provider) {
-  const v2 = new ethers.Contract(ESCROW_V2, ESCROW_V2_ABI, provider);
   const v3 = new ethers.Contract(ESCROW_V3, ESCROW_V3_ABI, provider);
   const currentBlock = await provider.getBlockNumber();
   const CHUNK = 9999;
   
-  let v2Created = [], v2Released = [], v2Disputed = [], v2Refunded = [];
   let v3Created = [], v3Released = [], v3Disputed = [], v3Refunded = [];
   
   for (let from = DEPLOY_BLOCK; from < currentBlock; from += CHUNK) {
     const to = Math.min(from + CHUNK - 1, currentBlock);
-    try {
-      const [c, r, d, f] = await Promise.all([
-        v2.queryFilter(v2.filters.EscrowCreated(), from, to),
-        v2.queryFilter(v2.filters.EscrowReleased(), from, to),
-        v2.queryFilter(v2.filters.EscrowDisputed(), from, to),
-        v2.queryFilter(v2.filters.EscrowRefunded(), from, to),
-      ]);
-      v2Created = v2Created.concat(c);
-      v2Released = v2Released.concat(r);
-      v2Disputed = v2Disputed.concat(d);
-      v2Refunded = v2Refunded.concat(f);
-    } catch {}
     try {
       const [c, r, d, f] = await Promise.all([
         v3.queryFilter(v3.filters.MilestoneEscrowCreated(), from, to),
@@ -540,24 +517,9 @@ async function loadEscrows(provider) {
     } catch {}
   }
   
-  const v2RelSet = new Set(v2Released.map(e => e.args.taskId));
-  const v2DispSet = new Set(v2Disputed.map(e => e.args.taskId));
-  const v2RefSet = new Set(v2Refunded.map(e => e.args.taskId));
-  
   let totalVolume = 0n;
   let releasedCount = 0;
   const escrows = [];
-  
-  // V2 escrows
-  for (const e of v2Created) {
-    const taskId = e.args.taskId;
-    totalVolume += e.args.amount;
-    let status = 'active';
-    if (v2RelSet.has(taskId)) { status = 'released'; releasedCount++; }
-    else if (v2RefSet.has(taskId)) status = 'refunded';
-    else if (v2DispSet.has(taskId)) status = 'disputed';
-    escrows.push({ taskId, requestor: e.args.requestor, worker: e.args.worker, amount: e.args.amount, status, blockNumber: e.blockNumber, version: 'v2' });
-  }
   
   // V3 milestone escrows
   for (const e of v3Created) {
@@ -595,18 +557,6 @@ async function loadEscrows(provider) {
         if (verified) { esc.verified = true; esc.verificationPassed = passed; vCount++; }
       } catch {}
     }
-    // Also check V1 verification
-    try {
-      const vr1 = new ethers.Contract(VERIFICATION_V1, VERIFICATION_ABI, provider);
-      for (const esc of escrows) {
-        if (esc.verified) continue;
-        try {
-          const [dHash,,,,,,, verified, passed] = await vr1.getDeliverable(esc.taskId);
-          if (dHash !== ZERO_HASH) esc.hasDeliverable = true;
-          if (verified) { esc.verified = true; esc.verificationPassed = passed; vCount++; }
-        } catch {}
-      }
-    } catch {}
     verificationCount = vCount;
     document.getElementById('verified-count').textContent = vCount;
   } catch {}
