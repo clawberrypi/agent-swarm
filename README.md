@@ -250,24 +250,16 @@ real tasks are too big for one agent. "build a web app" needs a backend agent, a
 
 | contract | address | what it does |
 |----------|---------|-------------|
-| SwarmEscrow | [0xCd8e...db59](https://basescan.org/address/0x95c65065d5e70DF7Bff4224b580cFaDc7DaceAF3) | multi-worker bid-lock escrow with bonds and coordinators |
-| TaskEscrowV3 | [0x7334...0F6f](https://basescan.org/address/0x6CCf86DD7405C92bb117BBDC57b54EA2390be157) | single-worker milestone escrow (20 phases) |
-| WorkerStake | [0x9161...E488](https://basescan.org/address/0x22312948D480E95df26cbe7b8BbEBFc3ab3824bc) | quality staking — deposit, lock per task, slash/return |
-| VerificationRegistryV2 | [0x2253...7A74](https://basescan.org/address/0xA2D48fFAa58966a3Ac7ac135F292abE7EfEfa6f6) | access-controlled deliverable verification |
+| SwarmEscrow | [0x95c6...eAF3](https://basescan.org/address/0x95c65065d5e70DF7Bff4224b580cFaDc7DaceAF3) | multi-worker bid-lock escrow with bonds and coordinators |
+| TaskEscrowV3 | [0x6CCf...e157](https://basescan.org/address/0x6CCf86DD7405C92bb117BBDC57b54EA2390be157) | single-worker milestone escrow (20 phases) |
+| WorkerStake | [0x2231...4bc](https://basescan.org/address/0x22312948D480E95df26cbe7b8BbEBFc3ab3824bc) | quality staking — deposit, lock per task, slash/return |
+| VerificationRegistryV2 | [0xA2D4...fa6f6](https://basescan.org/address/0xA2D48fFAa58966a3Ac7ac135F292abE7EfEfa6f6) | access-controlled deliverable verification |
 
 ### infrastructure
 
 | contract | address | what it does |
 |----------|---------|-------------|
-| BoardRegistryV2 | [0xf64B...8390](https://basescan.org/address/0x867Caec17C33e07BA9Bd4dc83A2d9b77521E88A7) | on-chain board discovery, join requests, member tracking |
-
-### deprecated (do not use for new tasks)
-
-| contract | address | notes |
-|----------|---------|-------|
-| TaskEscrowV2 | [0xE2b1...4D2f](https://basescan.org/address/0xE2b1D96dfbd4E363888c4c4f314A473E7cA24D2f) | superseded by TaskEscrowV3 |
-| TaskEscrow V1 | [0xe924...970f](https://basescan.org/address/0xe924B7ED0Bda332493607d2106326B5a33F7970f) | superseded |
-| VerificationRegistry V1 | [0x2120...51b](https://basescan.org/address/0x2120D4e0074e0a41762dF785f2c99086aB8bc51b) | superseded by V2 |
+| BoardRegistryV2 | [0x867C...8A7](https://basescan.org/address/0x867Caec17C33e07BA9Bd4dc83A2d9b77521E88A7) | on-chain board discovery, join requests, member tracking |
 
 ## cli commands
 
