@@ -31,7 +31,7 @@ const DEFAULT_GUARD = {
     'TaskEscrowV3': '0x6CCf86DD7405C92bb117BBDC57b54EA2390be157',  // primary single-worker escrow
     'WorkerStake': '0x22312948D480E95df26cbe7b8BbEBFc3ab3824bc',
     'VerificationRegistryV2': '0xA2D48fFAa58966a3Ac7ac135F292abE7EfEfa6f6',
-    'BoardRegistryV2': '0xF3C83A7EFADf37f2d5c802BABea8cbf01bfAE4f9',
+    'BoardRegistryV2': '0x867Caec17C33e07BA9Bd4dc83A2d9b77521E88A7',
     'USDC': '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     'SwapRouter': '0x2626664c2603336E57B271c5C0b26F421741e481',
     'SwarmEscrow': '0x95c65065d5e70DF7Bff4224b580cFaDc7DaceAF3',

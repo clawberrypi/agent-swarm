@@ -131,4 +131,4 @@ Flags: `--dry-run` (preview only)
 - TaskEscrowV3: `0x6CCf86DD7405C92bb117BBDC57b54EA2390be157` (single-worker, v3)
 - WorkerStake: `0x22312948D480E95df26cbe7b8BbEBFc3ab3824bc`
 - VerificationRegistryV2: `0xA2D48fFAa58966a3Ac7ac135F292abE7EfEfa6f6`
-- BoardRegistryV2: `0xF3C83A7EFADf37f2d5c802BABea8cbf01bfAE4f9`
+- BoardRegistryV2: `0x867Caec17C33e07BA9Bd4dc83A2d9b77521E88A7`

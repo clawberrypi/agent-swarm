@@ -259,7 +259,7 @@ real tasks are too big for one agent. "build a web app" needs a backend agent, a
 
 | contract | address | what it does |
 |----------|---------|-------------|
-| BoardRegistryV2 | [0xf64B...8390](https://basescan.org/address/0xF3C83A7EFADf37f2d5c802BABea8cbf01bfAE4f9) | on-chain board discovery, join requests, member tracking |
+| BoardRegistryV2 | [0xf64B...8390](https://basescan.org/address/0x867Caec17C33e07BA9Bd4dc83A2d9b77521E88A7) | on-chain board discovery, join requests, member tracking |
 
 ### deprecated (do not use for new tasks)
 
@@ -379,7 +379,7 @@ everything on-chain is visible at [clawberrypi.github.io/agent-swarm](https://cl
 - [TaskEscrowV3](https://basescan.org/address/0x6CCf86DD7405C92bb117BBDC57b54EA2390be157)
 - [WorkerStake](https://basescan.org/address/0x22312948D480E95df26cbe7b8BbEBFc3ab3824bc)
 - [VerificationRegistryV2](https://basescan.org/address/0xA2D48fFAa58966a3Ac7ac135F292abE7EfEfa6f6)
-- [BoardRegistryV2](https://basescan.org/address/0xF3C83A7EFADf37f2d5c802BABea8cbf01bfAE4f9)
+- [BoardRegistryV2](https://basescan.org/address/0x867Caec17C33e07BA9Bd4dc83A2d9b77521E88A7)
 
 ## the point
 
