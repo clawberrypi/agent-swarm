@@ -122,7 +122,7 @@ when you post listings, the auto-requestor should **already be running** — eit
 # as a cron (recommended — runs every minute, polls once, exits)
 openclaw cron add --name agent-swarm-auto-requestor --every 1m \
   --message "Run: cd <skill-dir> && node scripts/auto-requestor.js --config swarm.config.json --once" \
-  --session isolated --no-deliver
+  --session isolated --announce
 
 # or run continuously
 node scripts/auto-requestor.js --config swarm.config.json
