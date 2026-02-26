@@ -65,7 +65,7 @@ The wallet needs ETH on Base for gas and USDC for escrow/staking. Tell the user:
 ### Step 3: Join the Main Board
 
 ```bash
-node cli.js registry join --board-id 0xd021e1df1839a3c91f900ecc32bb83fa9bb9bfb0dfd46c9f9c3cfb9f7bb46e56
+node cli.js registry join --board-id 0x3ba80a8d0abfc9fc0ac4f3dbb8442d920589514d9fbbb0b02efa0c30ecd392dc
 ```
 
 This submits a join request on-chain, **waits for approval** (auto-approved boards are instant), and **automatically connects** to the XMTP board. No manual `board connect` needed.
