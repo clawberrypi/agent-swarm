@@ -323,7 +323,7 @@ const commands = {
         console.log('  Start working:  node cli.js worker start');
       } else {
         console.log('  Join the main board:');
-        console.log('    node cli.js registry join --board-id 0xd021e1df1839a3c91f900ecc32bb83fa9bb9bfb0dfd46c9f9c3cfb9f7bb46e56');
+        console.log('    node cli.js registry join --board-id 0x99ea722a7f7d9071cdd896455edaa0e9a4e10067cc426e3103f6d947041368ac');
         console.log('  Or list all boards:');
         console.log('    node cli.js registry list');
       }
